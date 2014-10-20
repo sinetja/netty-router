@@ -84,7 +84,7 @@ params and query params from it:
   String       Router.param(req)
   List<String> Router.params(req)
 
-See `test <https://github.com/xitrum-framework/netty-router/tree/master/src/test/java/io/netty/handler/codec/http>`_
+See `test <https://github.com/xitrum-framework/netty-router/tree/master/src/test/scala/io/netty/handler/codec/http>`_
 for example.
 
 Create reverse route
