@@ -28,19 +28,13 @@ Create router
 
 ::
 
-  import io.netty.handler.codec.http.Router;
-  Router router = new Router();
-
-Add rules
-~~~~~~~~~
-
-::
-
   import io.netty.handler.codec.http.HttpMethod;
+  import io.netty.handler.codec.http.Router;
 
-  router.pattern(HttpMethod.GET,  "/articles",     IndexHandler.class);
-  router.pattern(HttpMethod.GET,  "/articles/:id", ShowHandler.class);
-  router.pattern(HttpMethod.POST, "/articles",     CreateHandler.class);
+  Router router = new Router()
+    .pattern(HttpMethod.GET,  "/articles",     IndexHandler.class)
+    .pattern(HttpMethod.GET,  "/articles/:id", ShowHandler.class)
+    .pattern(HttpMethod.POST, "/articles",     CreateHandler.class);
 
 Instead of using handler class, you can use handler instance:
 
@@ -49,24 +43,49 @@ Instead of using handler class, you can use handler instance:
   DeleteHandler deleteHandler = new DeleteHandler();
   router.pattern(HttpMethod.DELETE, "/articles/:id", deleteHandler);
 
-Processing logic
-~~~~~~~~~~~~~~~~
+Add router to pipeline
+~~~~~~~~~~~~~~~~~~~~~~
 
 Add ``router`` to your Netty inbound pipeline, after the HTTP request decoder.
 When a path is matched:
 
 * ``router`` will create a new instance of the matched handler class, and add it
-  to the pipeline, right after ``router`` itself.
-* If you use handler instance as ``deleteHandler`` above, ``router`` doesn't have
-  to create a new instance.
-* ``router`` then passes the current HTTP request to your handler.
-
-Netty pipeline example
-~~~~~~~~~~~~~~~~~~~~~~
+  to the pipeline, right after ``router`` itself. If you use handler instance as
+  ``deleteHandler`` above, ``router`` doesn't have to create a new instance.
+* ``router`` will add path params and query params to the request as headers.
+* ``router`` will passes the current HTTP request to your handler.
 
 ::
 
-  TODO
+  public class ExampleInitializer extends ChannelInitializer<SocketChannel> {
+    private static final router = new Router()
+      .pattern(HttpMethod.GET, "/",             new ExampleHandler())
+      .pattern(HttpMethod.GET, "/articles/:id", ExampleHandler.class)
+
+    public void initChannel(SocketChannel ch) {
+      ChannelPipeline p = ch.pipeline();
+      p.addLast(new HttpServerCodec);
+      p.addLast(router.name(), router);  // Must use router.name()
+    }
+  }
+
+Extract params from request
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When the request is routed to your handler by ``router``, you can extract path
+params and query params from it:
+
+::
+
+  Map<String, String>       Router.pathParams(req)
+  Map<String, List<String>> Router.queryParams(req)
+
+  // Use path params first, then fall back to query params
+  String       Router.param(req)
+  List<String> Router.params(req)
+
+See `test <https://github.com/xitrum-framework/netty-router/tree/master/src/test/java/io/netty/handler/codec/http>`_
+for example.
 
 Create reverse route
 ~~~~~~~~~~~~~~~~~~~~
