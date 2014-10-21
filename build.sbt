@@ -4,6 +4,8 @@ name         := "netty-router"
 
 version      := "1.0-SNAPSHOT"
 
+//------------------------------------------------------------------------------
+
 scalaVersion := "2.11.2"
 
 autoScalaLibrary := false
@@ -15,6 +17,8 @@ javacOptions in (Compile) ++= Seq("-source", "1.5", "-target", "1.5", "-Xlint:de
 
 javacOptions in (Compile, doc) := Seq("-source", "1.5")
 
-libraryDependencies += "tv.cntt" % "jauter" % "1.0-SNAPSHOT"
+//------------------------------------------------------------------------------
+
+libraryDependencies += "tv.cntt" % "jauter" % "1.1"
 
 libraryDependencies += "io.netty" % "netty-all" % "4.0.23.Final" % "provided"

@@ -1,6 +1,9 @@
-This tiny Java library is intended for use with Netty 4, to route HTTP requests to
-your Netty handlers. It is based on
+This tiny Java library is intended for use with Netty 4, to route HTTP requests
+to your Netty handlers. It is based on
 `Jauter <https://github.com/xitrum-framework/jauter>`_.
+
+See `test <https://github.com/xitrum-framework/netty-router/tree/master/src/test/scala/io/netty/handler/codec/http>`_
+for example.
 
 Use with Maven
 ~~~~~~~~~~~~~~
@@ -73,21 +76,105 @@ Extract params from request
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When the request is routed to your handler by ``router``, you can extract path
-params and query params from it:
+params and query params from its headers:
 
 ::
+
+  // Use path params first, then fall back to query params.
+  // Usually, you want to use this method most of the time.
+  String Router.param(req)
+
+  // Both path params and query params are returned.
+  // Empty list is returned if there are no such params.
+  List<String> Router.params(req)
 
   Map<String, String>       Router.pathParams(req)
   Map<String, List<String>> Router.queryParams(req)
 
-  // Use path params first, then fall back to query params
-  String       Router.param(req)
-  List<String> Router.params(req)
+If you want to clean headers set by the router:
 
-See `test <https://github.com/xitrum-framework/netty-router/tree/master/src/test/scala/io/netty/handler/codec/http>`_
-for example.
+::
+
+  Router.cleanHeaders(req);
+
+404 Not Found handler
+~~~~~~~~~~~~~~~~~~~~~
+
+If no matched handler is found, by default the router will respond
+``404 Not Found``.
+
+If you want to pass your own 404 Not Found handler:
+
+::
+
+  ChannelInboundHandler my404Handler = ...;
+  Router                router       = new Router(my404Handler);
+
+EventExecutorGroup
+~~~~~~~~~~~~~~~~~~
+
+By default your routed handler will run by Netty's IO thread. If your handler
+takes time to run, e.g. blocking, Netty may not be able to accept new requests
+or reply responses. In that case, you may specify your own
+`EventExecutorGroup <http://netty.io/4.0/api/io/netty/util/concurrent/EventExecutorGroup.html>`_.
+
+::
+
+  int                poolSize     = Runtime.getRuntime().availableProcessors() * 2;
+  EventExecutorGroup myThreadPool = new DefaultEventExecutorGroup(poolSize);
+  Router             router       = new Router(myThreadPool);
+
+If you want to specify both ``EventExecutorGroup`` and 404 Not Found handler:
+
+::
+
+  Router router = new Router(myThreadPool, my404Handler);
 
 Create reverse route
 ~~~~~~~~~~~~~~~~~~~~
 
-TODO
+::
+
+  router.path(HttpMethod.GET, IndexHandler.class);
+  // => "/articles"
+
+You can skip HTTP method if there's no confusion:
+
+::
+
+  router.path(CreateHandler.class);
+  // => "/articles"
+
+You can specify params as map:
+
+::
+
+  // Things in params will be converted to String
+  Map<Object, Object> params = new HashMap<Object, Object>();
+  params.put("id", 123);
+  router.path(ShowHandler.class, params);
+  // => "/articles/123"
+
+Convenient way to specify params:
+
+::
+
+  router.path(ShowHandler.class, "id", 123);
+  // => "/articles/123"
+
+You can specify an instance in pattern, but use the instance's class to create
+path. This feature is useful if you want to create web frameworks:
+
+::
+
+  // Optimize speed by precreating.
+  // Optimize memory by sharing for all requests.
+  IndexHandler cachedInstance = new IndexHandler();
+
+  Router router = new Router<Object>()
+    .pattern("/articles",     cachedInstance)
+    .pattern("/articles/:id", ShowHandler.class);
+
+  // These are the same:
+  router.path(cachedInstance);
+  router.path(IndexHandler.class);

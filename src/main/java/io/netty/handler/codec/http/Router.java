@@ -17,6 +17,7 @@ import io.netty.channel.ChannelInboundHandler;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.concurrent.EventExecutorGroup;
 
 @ChannelHandler.Sharable
 public class Router extends SimpleChannelInboundHandler<HttpRequest> {
@@ -29,15 +30,26 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
   private final Map<HttpMethod, jauter.Router<Object>> routers =
       new HashMap<HttpMethod, jauter.Router<Object>>();
 
+  private final EventExecutorGroup group;
+
   private final ChannelInboundHandler handler404;
 
   //----------------------------------------------------------------------------
 
   public Router() {
-    this(new DefaultHandler404());
+    this(null, new DefaultHandler404());
   }
 
   public Router(ChannelInboundHandler handler404) {
+    this(null, handler404);
+  }
+
+  public Router(EventExecutorGroup group) {
+    this(group, new DefaultHandler404());
+  }
+
+  public Router(EventExecutorGroup group, ChannelInboundHandler handler404) {
+    this.group      = group;
     this.handler404 = handler404;
   }
 
@@ -51,8 +63,8 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
 
   //----------------------------------------------------------------------------
 
-  public Router pattern(HttpMethod method, String path, ChannelInboundHandler handler) {
-    return _pattern(method, path, handler);
+  public Router pattern(HttpMethod method, String path, ChannelInboundHandler handlerInstance) {
+    return _pattern(method, path, handlerInstance);
   }
 
   public Router pattern(HttpMethod method, String path, Class<? extends ChannelInboundHandler> handlerClass) {
@@ -120,8 +132,14 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
     ChannelPipeline pipeline     = ctx.pipeline();
     ChannelHandler  addedHandler = pipeline.get(ROUTED_HANDLER_NAME);
     if (handler != addedHandler) {
-      if (addedHandler != null) pipeline.remove(addedHandler);
-      pipeline.addAfter(ROUTER_HANDLER_NAME, ROUTED_HANDLER_NAME, handler);
+      if (addedHandler == null) {
+        if (group == null)
+          pipeline.addAfter(ROUTER_HANDLER_NAME, ROUTED_HANDLER_NAME, handler);
+        else
+          pipeline.addAfter(group, ROUTER_HANDLER_NAME, ROUTED_HANDLER_NAME, handler);
+      } else {
+        pipeline.replace(addedHandler, ROUTED_HANDLER_NAME, handler);
+      }
     }
 
     // Pass request to the routed handler
@@ -131,6 +149,7 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
   //----------------------------------------------------------------------------
   // Utilities to extract params from headers.
 
+  /** Use path params first, then fall back to query params. */
   public static String param(HttpRequest req, String name) {
     HttpHeaders headers = req.headers();
 
@@ -140,23 +159,24 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
 
     String queryKey = QUERY_PARAM_HEADER_PREFIX + name;
     String queryValue = headers.get(queryKey);
-    if (queryValue != null) return queryValue;
-
-    return null;
+    return queryValue;
   }
 
+  /**
+   * Both path params and query params are returned.
+   * Empty list is returned if there are no such params.
+   */
   public static List<String> params(HttpRequest req, String name) {
     HttpHeaders headers = req.headers();
 
     String       pathKey    = PATH_PARAM_HEADER_PREFIX + name;
     List<String> pathValues = headers.getAll(pathKey);
-    if (pathValues != null) return pathValues;
 
     String       queryKey    = QUERY_PARAM_HEADER_PREFIX + name;
     List<String> queryValues = headers.getAll(queryKey);
-    if (queryValues != null) return queryValues;
 
-    return null;
+    pathValues.addAll(queryValues);
+    return pathValues;
   }
 
   public static Map<String, String> pathParams(HttpRequest req) {
@@ -176,18 +196,50 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
     Map<String, List<String>> ret = new HashMap<String, List<String>>();
     for (Entry<String, String> entry : req.headers().entries()) {
       String key   = entry.getKey();
-      String value = entry.getValue();
       if (key.startsWith(QUERY_PARAM_HEADER_PREFIX)) {
+        String value = entry.getValue();
+
         String       withoutPrefix = key.substring(QUERY_PARAM_HEADER_PREFIX.length());
         List<String> values        = ret.get(withoutPrefix);
         if (values == null) {
           values = new ArrayList<String>();
           ret.put(withoutPrefix, values);
         }
+
         values.add(value);
       }
     }
     return ret;
+  }
+
+  /** Cleans path params and query params set by Router in headers. */
+  public static void cleanHeaders(HttpRequest req) {
+    HttpHeaders clean = new DefaultHttpHeaders(false);
+    for (Entry<String, String> entry : req.headers().entries()) {
+      String key   = entry.getKey();
+      if (!key.startsWith(PATH_PARAM_HEADER_PREFIX) && !key.startsWith(QUERY_PARAM_HEADER_PREFIX)) {
+        String value = entry.getValue();
+        clean.add(key, value);
+      }
+    }
+
+    req.headers().set(clean);
+  }
+
+  //----------------------------------------------------------------------------
+  // Reverse routing.
+
+  public String path(HttpMethod method, ChannelInboundHandler handlerInstance, Object... params) {
+    return _path(method, handlerInstance, params);
+  }
+
+  public String path(HttpMethod method, Class<? extends ChannelInboundHandler> handlerClass, Object... params) {
+    return _path(method, handlerClass, params);
+  }
+
+  private String _path(HttpMethod method, Object target, Object... params) {
+    jauter.Router<Object> router = routers.get(method);
+    return (router == null)? null : router.path(target);
   }
 
   //----------------------------------------------------------------------------

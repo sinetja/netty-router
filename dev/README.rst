@@ -8,7 +8,7 @@ To delete the local publish:
 
 ::
 
-  $ find ~/.ivy2 -name *jauter* -delete
+  $ find ~/.ivy2 -name *netty-router* -delete
 
 Publish to Sonatype
 -------------------
