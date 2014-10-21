@@ -149,17 +149,22 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
   //----------------------------------------------------------------------------
   // Utilities to extract params from headers.
 
+  public static String pathParam(HttpRequest req, String name) {
+    HttpHeaders headers = req.headers();
+    String      key     = PATH_PARAM_HEADER_PREFIX + name;
+    return headers.get(key);
+  }
+
+  public static String queryParam(HttpRequest req, String name) {
+    HttpHeaders headers = req.headers();
+    String      key     = QUERY_PARAM_HEADER_PREFIX + name;
+    return headers.get(key);
+  }
+
   /** Use path params first, then fall back to query params. */
   public static String param(HttpRequest req, String name) {
-    HttpHeaders headers = req.headers();
-
-    String pathKey   = PATH_PARAM_HEADER_PREFIX + name;
-    String pathValue = headers.get(pathKey);
-    if (pathValue != null) return pathValue;
-
-    String queryKey = QUERY_PARAM_HEADER_PREFIX + name;
-    String queryValue = headers.get(queryKey);
-    return queryValue;
+    String pathValue = pathParam(req, name);
+    return (pathValue == null)? queryParam(req, name) : pathValue;
   }
 
   /**
