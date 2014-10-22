@@ -65,7 +65,6 @@ public class ChainRouter<T extends ChainRouter<T>> extends SimpleChannelInboundH
 
   //----------------------------------------------------------------------------
 
-
   public T group(EventExecutorGroup group) {
     this.group = group;
     return (T) this;
