@@ -23,33 +23,39 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
   public static final String ROUTER_HANDLER_NAME = Router.class.getName() + "_ROUTER_HANDLER";
   public static final String ROUTED_HANDLER_NAME = Router.class.getName() + "_ROUTED_HANDLER";
 
+  //----------------------------------------------------------------------------
+
   protected final Map<HttpMethod, jauter.Router<Object>> routers =
       new HashMap<HttpMethod, jauter.Router<Object>>();
 
   protected final jauter.Router<Object> anyMethodRouter =
       new jauter.Router<Object>();
 
-  protected final EventExecutorGroup group;
+  //----------------------------------------------------------------------------
 
-  protected final ChannelInboundHandler handler404;
+  protected EventExecutorGroup group;
+
+  /** Fallback priority: handlerInstance404 > handlerClass404 > DefaultHandler404.INSTANCE */
+  protected ChannelInboundHandler handlerInstance404;
+
+  /** Fallback priority: handlerInstance404 > handlerClass404 > DefaultHandler404.INSTANCE */
+  protected Class<? extends ChannelInboundHandler> handlerClass404;
 
   //----------------------------------------------------------------------------
 
-  public Router() {
-    this(null, new DefaultHandler404());
+  public Router group(EventExecutorGroup group) {
+    this.group = group;
+    return this;
   }
 
-  public Router(ChannelInboundHandler handler404) {
-    this(null, handler404);
+  public Router handler404(ChannelInboundHandler handlerInstance404) {
+    this.handlerInstance404 = handlerInstance404;
+    return this;
   }
 
-  public Router(EventExecutorGroup group) {
-    this(group, new DefaultHandler404());
-  }
-
-  public Router(EventExecutorGroup group, ChannelInboundHandler handler404) {
-    this.group      = group;
-    this.handler404 = handler404;
+  public Router handler404(Class<? extends ChannelInboundHandler> handlerClass404) {
+    this.handlerClass404 = handlerClass404;
+    return this;
   }
 
   /**
@@ -392,8 +398,8 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
       jrouted = jrouter.route(qsd.path());
     }
 
-    // Set handler (default: 404) and pathParams
-    ChannelInboundHandler handler = handler404;
+    // Set handler and pathParams
+    ChannelInboundHandler handler = null;
     Map<String, String>   pathParams;
     if (jrouted != null) {
       Object target = jrouted.target();
@@ -409,6 +415,16 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
       pathParams = jrouted.params();
     } else {
       pathParams = new HashMap<String, String>();
+    }
+
+    // If handler is not set, use fallback: (default: DefaultHandler404.INSTANCE)
+    if (handler == null) {
+      if (handlerInstance404 != null)
+        handler = handlerInstance404;
+      else if (handlerClass404 != null)
+        handler = handlerClass404.newInstance();
+      else
+        handler = DefaultHandler404.INSTANCE;
     }
 
     ReferenceCountUtil.retain(req);

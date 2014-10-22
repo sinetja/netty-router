@@ -38,7 +38,8 @@ You can remove routes by target or by path:
   router.removePath("/articles")
 
 Instead of using handler class, you can use handler instance. In this case,
-the handler class should be annotated with ``@io.netty.channel.ChannelHandler.Sharable``:
+the handler class should be annotated with
+`Sharable <http://netty.io/4.0/api/io/netty/channel/ChannelHandler.Sharable.html>`_:
 
 ::
 
@@ -115,8 +116,14 @@ If you want to pass your own 404 Not Found handler:
 
 ::
 
-  ChannelInboundHandler my404Handler = ...;
-  Router                router       = new Router(my404Handler);
+  router.handler404(My404Handler.class);
+
+You can also use instance (your handler must be `sharable <http://netty.io/4.0/api/io/netty/channel/ChannelHandler.Sharable.html>`_):
+
+::
+
+  ChannelInboundHandler my404Handler = new My404Handler();
+  router.handler404(my404Handler);
 
 EventExecutorGroup
 ~~~~~~~~~~~~~~~~~~
@@ -130,13 +137,7 @@ or reply responses. In that case, you may specify your own
 
   int                poolSize     = Runtime.getRuntime().availableProcessors() * 2;
   EventExecutorGroup myThreadPool = new DefaultEventExecutorGroup(poolSize);
-  Router             router       = new Router(myThreadPool);
-
-If you want to specify both ``EventExecutorGroup`` and 404 Not Found handler:
-
-::
-
-  Router router = new Router(myThreadPool, my404Handler);
+  router.group(myThreadPool);
 
 Create reverse route
 ~~~~~~~~~~~~~~~~~~~~

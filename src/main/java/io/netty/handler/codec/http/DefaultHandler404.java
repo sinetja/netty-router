@@ -8,6 +8,8 @@ import io.netty.channel.SimpleChannelInboundHandler;
 
 @ChannelHandler.Sharable
 public class DefaultHandler404 extends SimpleChannelInboundHandler<Routed> {
+  public static final DefaultHandler404 INSTANCE = new DefaultHandler404();
+
   private static final byte[] CONTENT_404 = "404 Not Found".getBytes();
 
   @Override
