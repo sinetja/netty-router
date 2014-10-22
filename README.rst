@@ -103,6 +103,10 @@ Routed contains:
   Map<String, String>       pathParams()
   Map<String, List<String>> queryParams()
 
+``Routed`` is a `ReferenceCounted <http://netty.io/4.0/api/io/netty/util/ReferenceCounted.html>`_
+via the wrapped request. If your handler is not a `SimpleChannelInboundHandler <http://netty.io/4.0/api/io/netty/util/ReferenceCounted.html>`_,
+which does release automatically, you may need to manually call its ``release``.
+
 Extract params from request
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

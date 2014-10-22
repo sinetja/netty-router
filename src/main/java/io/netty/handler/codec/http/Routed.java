@@ -1,14 +1,18 @@
 package io.netty.handler.codec.http;
 
+import io.netty.util.ReferenceCounted;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class Routed {
+public class Routed implements ReferenceCounted {
   protected final HttpRequest               request;
   protected final String                    path;
   protected final Map<String, String>       pathParams;
   protected final Map<String, List<String>> queryParams;
+
+  protected final ReferenceCounted requestAsReferenceCounted;
 
   //----------------------------------------------------------------------------
 
@@ -17,6 +21,8 @@ public class Routed {
     this.path        = path;
     this.pathParams  = pathParams;
     this.queryParams = queryParams;
+
+    requestAsReferenceCounted = (request instanceof ReferenceCounted)? (ReferenceCounted) request : null;
   }
 
   public HttpRequest request() {
@@ -64,5 +70,34 @@ public class Routed {
     if (value != null) values.add(value);
 
     return values;
+  }
+
+  //----------------------------------------------------------------------------
+
+  @Override
+  public int refCnt() {
+    return (requestAsReferenceCounted == null)? 0 : requestAsReferenceCounted.refCnt();
+  }
+
+  @Override
+  public boolean release() {
+    return (requestAsReferenceCounted == null)? true : requestAsReferenceCounted.release();
+  }
+
+  @Override
+  public boolean release(int arg0) {
+    return (requestAsReferenceCounted == null)? true : requestAsReferenceCounted.release(arg0);
+  }
+
+  @Override
+  public ReferenceCounted retain() {
+    if (requestAsReferenceCounted != null) requestAsReferenceCounted.retain();
+    return this;
+  }
+
+  @Override
+  public ReferenceCounted retain(int arg0) {
+    if (requestAsReferenceCounted != null) requestAsReferenceCounted.retain(arg0);
+    return this;
   }
 }
