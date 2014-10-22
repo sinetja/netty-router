@@ -77,7 +77,7 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
     return this;
   }
 
-  public Router patternFirstFirst(HttpMethod method, String path, Class<? extends ChannelInboundHandler> handlerClass) {
+  public Router patternFirst(HttpMethod method, String path, Class<? extends ChannelInboundHandler> handlerClass) {
     getRouter(method).patternFirst(path, handlerClass);
     return this;
   }
@@ -101,6 +101,258 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
       routers.put(method, jr);
     }
     return jr;
+  }
+
+  //----------------------------------------------------------------------------
+
+  public Router CONNECT(String path, ChannelInboundHandler handlerInstance) {
+    return pattern(HttpMethod.CONNECT, path, handlerInstance);
+  }
+
+  public Router DELETE(String path, ChannelInboundHandler handlerInstance) {
+    return pattern(HttpMethod.DELETE, path, handlerInstance);
+  }
+
+  public Router GET(String path, ChannelInboundHandler handlerInstance) {
+    return pattern(HttpMethod.GET, path, handlerInstance);
+  }
+
+  public Router HEAD(String path, ChannelInboundHandler handlerInstance) {
+    return pattern(HttpMethod.HEAD, path, handlerInstance);
+  }
+
+  public Router OPTIONS(String path, ChannelInboundHandler handlerInstance) {
+    return pattern(HttpMethod.OPTIONS, path, handlerInstance);
+  }
+
+  public Router PATCH(String path, ChannelInboundHandler handlerInstance) {
+    return pattern(HttpMethod.PATCH, path, handlerInstance);
+  }
+
+  public Router POST(String path, ChannelInboundHandler handlerInstance) {
+    return pattern(HttpMethod.POST, path, handlerInstance);
+  }
+
+  public Router PUT(String path, ChannelInboundHandler handlerInstance) {
+    return pattern(HttpMethod.PUT, path, handlerInstance);
+  }
+
+  public Router TRACE(String path, ChannelInboundHandler handlerInstance) {
+    return pattern(HttpMethod.TRACE, path, handlerInstance);
+  }
+
+  public Router ANY(String path, ChannelInboundHandler handlerInstance) {
+    return pattern(null, path, handlerInstance);
+  }
+
+  //----------------------------------------------------------------------------
+
+  public Router CONNECT(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return pattern(HttpMethod.CONNECT, path, handlerClass);
+  }
+
+  public Router DELETE(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return pattern(HttpMethod.DELETE, path, handlerClass);
+  }
+
+  public Router GET(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return pattern(HttpMethod.GET, path, handlerClass);
+  }
+
+  public Router HEAD(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return pattern(HttpMethod.HEAD, path, handlerClass);
+  }
+
+  public Router OPTIONS(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return pattern(HttpMethod.OPTIONS, path, handlerClass);
+  }
+
+  public Router PATCH(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return pattern(HttpMethod.PATCH, path, handlerClass);
+  }
+
+  public Router POST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return pattern(HttpMethod.POST, path, handlerClass);
+  }
+
+  public Router PUT(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return pattern(HttpMethod.PUT, path, handlerClass);
+  }
+
+  public Router TRACE(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return pattern(HttpMethod.TRACE, path, handlerClass);
+  }
+
+  public Router ANY(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return pattern(null, path, handlerClass);
+  }
+
+  //----------------------------------------------------------------------------
+
+  public Router CONNECT_FIRST(String path, ChannelInboundHandler handlerInstance) {
+    return patternFirst(HttpMethod.CONNECT, path, handlerInstance);
+  }
+
+  public Router DELETE_FIRST(String path, ChannelInboundHandler handlerInstance) {
+    return patternFirst(HttpMethod.DELETE, path, handlerInstance);
+  }
+
+  public Router GET_FIRST(String path, ChannelInboundHandler handlerInstance) {
+    return patternFirst(HttpMethod.GET, path, handlerInstance);
+  }
+
+  public Router HEAD_FIRST(String path, ChannelInboundHandler handlerInstance) {
+    return patternFirst(HttpMethod.HEAD, path, handlerInstance);
+  }
+
+  public Router OPTIONS_FIRST(String path, ChannelInboundHandler handlerInstance) {
+    return patternFirst(HttpMethod.OPTIONS, path, handlerInstance);
+  }
+
+  public Router PATCH_FIRST(String path, ChannelInboundHandler handlerInstance) {
+    return patternFirst(HttpMethod.PATCH, path, handlerInstance);
+  }
+
+  public Router POST_FIRST(String path, ChannelInboundHandler handlerInstance) {
+    return patternFirst(HttpMethod.POST, path, handlerInstance);
+  }
+
+  public Router PUT_FIRST(String path, ChannelInboundHandler handlerInstance) {
+    return patternFirst(HttpMethod.PUT, path, handlerInstance);
+  }
+
+  public Router TRACE_FIRST(String path, ChannelInboundHandler handlerInstance) {
+    return patternFirst(HttpMethod.TRACE, path, handlerInstance);
+  }
+
+  public Router ANY_FIRST(String path, ChannelInboundHandler handlerInstance) {
+    return patternFirst(null, path, handlerInstance);
+  }
+
+  //----------------------------------------------------------------------------
+
+  public Router CONNECT_FIRST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternFirst(HttpMethod.CONNECT, path, handlerClass);
+  }
+
+  public Router DELETE_FIRST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternFirst(HttpMethod.DELETE, path, handlerClass);
+  }
+
+  public Router GET_FIRST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternFirst(HttpMethod.GET, path, handlerClass);
+  }
+
+  public Router HEAD_FIRST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternFirst(HttpMethod.HEAD, path, handlerClass);
+  }
+
+  public Router OPTIONS_FIRST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternFirst(HttpMethod.OPTIONS, path, handlerClass);
+  }
+
+  public Router PATCH_FIRST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternFirst(HttpMethod.PATCH, path, handlerClass);
+  }
+
+  public Router POST_FIRST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternFirst(HttpMethod.POST, path, handlerClass);
+  }
+
+  public Router PUT_FIRST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternFirst(HttpMethod.PUT, path, handlerClass);
+  }
+
+  public Router TRACE_FIRST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternFirst(HttpMethod.TRACE, path, handlerClass);
+  }
+
+  public Router ANY_FIRST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternFirst(null, path, handlerClass);
+  }
+
+  //----------------------------------------------------------------------------
+
+  public Router CONNECT_LAST(String path, ChannelInboundHandler handlerInstance) {
+    return patternLast(HttpMethod.CONNECT, path, handlerInstance);
+  }
+
+  public Router DELETE_LAST(String path, ChannelInboundHandler handlerInstance) {
+    return patternLast(HttpMethod.DELETE, path, handlerInstance);
+  }
+
+  public Router GET_LAST(String path, ChannelInboundHandler handlerInstance) {
+    return patternLast(HttpMethod.GET, path, handlerInstance);
+  }
+
+  public Router HEAD_LAST(String path, ChannelInboundHandler handlerInstance) {
+    return patternLast(HttpMethod.HEAD, path, handlerInstance);
+  }
+
+  public Router OPTIONS_LAST(String path, ChannelInboundHandler handlerInstance) {
+    return patternLast(HttpMethod.OPTIONS, path, handlerInstance);
+  }
+
+  public Router PATCH_LAST(String path, ChannelInboundHandler handlerInstance) {
+    return patternLast(HttpMethod.PATCH, path, handlerInstance);
+  }
+
+  public Router POST_LAST(String path, ChannelInboundHandler handlerInstance) {
+    return patternLast(HttpMethod.POST, path, handlerInstance);
+  }
+
+  public Router PUT_LAST(String path, ChannelInboundHandler handlerInstance) {
+    return patternLast(HttpMethod.PUT, path, handlerInstance);
+  }
+
+  public Router TRACE_LAST(String path, ChannelInboundHandler handlerInstance) {
+    return patternLast(HttpMethod.TRACE, path, handlerInstance);
+  }
+
+  public Router ANY_LAST(String path, ChannelInboundHandler handlerInstance) {
+    return patternLast(null, path, handlerInstance);
+  }
+
+  //----------------------------------------------------------------------------
+
+  public Router CONNECT_LAST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternLast(HttpMethod.CONNECT, path, handlerClass);
+  }
+
+  public Router DELETE_LAST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternLast(HttpMethod.DELETE, path, handlerClass);
+  }
+
+  public Router GET_LAST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternLast(HttpMethod.GET, path, handlerClass);
+  }
+
+  public Router HEAD_LAST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternLast(HttpMethod.HEAD, path, handlerClass);
+  }
+
+  public Router OPTIONS_LAST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternLast(HttpMethod.OPTIONS, path, handlerClass);
+  }
+
+  public Router PATCH_LAST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternLast(HttpMethod.PATCH, path, handlerClass);
+  }
+
+  public Router POST_LAST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternLast(HttpMethod.POST, path, handlerClass);
+  }
+
+  public Router PUT_LAST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternLast(HttpMethod.PUT, path, handlerClass);
+  }
+
+  public Router TRACE_LAST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternLast(HttpMethod.TRACE, path, handlerClass);
+  }
+
+  public Router ANY_LAST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    return patternLast(null, path, handlerClass);
   }
 
   //----------------------------------------------------------------------------

@@ -7,52 +7,28 @@ netty-router is used in `Sinetja <https://github.com/xitrum-framework/sinetja>`_
 See `test <https://github.com/xitrum-framework/netty-router/tree/master/src/test/scala/io/netty/handler/codec/http>`_
 for example.
 
-Use with Maven
-~~~~~~~~~~~~~~
-
-::
-
-  <dependency>
-    <groupId>tv.cntt</groupId>
-    <artifactId>netty-router</artifactId>
-    <version>1.2</version>
-  </dependency>
-
-Tip: You should also add `Javassist <http://javassist.org/>`_, it boosts Netty 4+ speed.
-
-::
-
-  <dependency>
-    <groupId>org.javassist</groupId>
-    <artifactId>javassist</artifactId>
-    <version>3.18.2-GA</version>
-  </dependency>
-
 Create router
 ~~~~~~~~~~~~~
 
 ::
 
-  import io.netty.handler.codec.http.HttpMethod;
   import io.netty.handler.codec.http.Router;
 
   Router router = new Router()
-    .pattern     (HttpMethod.GET,  "/articles",     IndexHandler.class)
-    .pattern     (HttpMethod.GET,  "/articles/:id", ShowHandler.class)
-    .pattern     (HttpMethod.POST, "/articles",     CreateHandler.class)
-    .pattern     (HttpMethod.GET,  "/download/:*",  DownloadHandler.class)      // ":*" must be the last token
-    .patternFirst(HttpMethod.GET,  "/articles/new", NewHandler.class)           // This will be matched first
-    .patternLast (null,            "/:*",           NotFound404Handler.class);  // This will be matched last
-
-Set ``null`` as HTTP method means that all methods will be matched.
+    .GET      ("/articles",     IndexHandler.class)
+    .GET      ("/articles/:id", ShowHandler.class)
+    .POST     ("/articles",     CreateHandler.class)
+    .GET      ("/download/:*",  DownloadHandler.class)      // ":*" must be the last token
+    .GET_FIRST("/articles/new", NewHandler.class)           // This will be matched first
+    .ANY_LAST ("/:*",           NotFound404Handler.class);  // This will be matched last, any method
 
 Slashes at both ends are ignored, so these are the same:
 
 ::
 
-  router.pattern(HttpMethod.GET, "articles",   IndexHandler.class)
-  router.pattern(HttpMethod.GET, "/articles",  IndexHandler.class)
-  router.pattern(HttpMethod.GET, "/articles/", IndexHandler.class)
+  router.GET("articles",   IndexHandler.class)
+  router.GET("/articles",  IndexHandler.class)
+  router.GET("/articles/", IndexHandler.class)
 
 You can remove routes by target or by path:
 
@@ -69,7 +45,7 @@ the handler class should be annotated with ``@io.netty.channel.ChannelHandler.Sh
   // Optimize speed by precreating handler.
   // Optimize memory by sharing one handler for all requests.
   DeleteHandler deleteHandler = new DeleteHandler();
-  router.pattern(HttpMethod.DELETE, "/articles/:id", deleteHandler);
+  router.DELETE("/articles/:id", deleteHandler);
 
 Add router to pipeline
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -86,8 +62,8 @@ When a path is matched:
 
   public class PipelineInitializer extends ChannelInitializer<SocketChannel> {
     private static final router = new Router()
-      .pattern(HttpMethod.GET, "/",             new ExampleHandler())
-      .pattern(HttpMethod.GET, "/articles/:id", ExampleHandler.class)
+      .GET("/",             new ExampleHandler())
+      .GET("/articles/:id", ExampleHandler.class)
 
     public void initChannel(SocketChannel ch) {
       ChannelPipeline p = ch.pipeline();
@@ -208,3 +184,24 @@ path.
   // These are the same:
   router.path(cachedInstance);
   router.path(IndexHandler.class);
+
+Use with Maven
+~~~~~~~~~~~~~~
+
+::
+
+  <dependency>
+    <groupId>tv.cntt</groupId>
+    <artifactId>netty-router</artifactId>
+    <version>1.3</version>
+  </dependency>
+
+Tip: You should also add `Javassist <http://javassist.org/>`_, it boosts Netty 4+ speed.
+
+::
+
+  <dependency>
+    <groupId>org.javassist</groupId>
+    <artifactId>javassist</artifactId>
+    <version>3.18.2-GA</version>
+  </dependency>

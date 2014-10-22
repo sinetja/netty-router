@@ -46,8 +46,8 @@ object Server {
 
 object PipelineInitializer extends ChannelInitializer[SocketChannel] {
   private val router = (new Router)
-    .pattern(HttpMethod.GET, "/",             new RequestHandler)
-    .pattern(HttpMethod.GET, "/articles/:id", classOf[RequestHandler])
+    .GET("/",             new RequestHandler)
+    .GET("/articles/:id", classOf[RequestHandler])
 
   def initChannel(ch: SocketChannel) {
     val p = ch.pipeline
