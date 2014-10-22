@@ -35,10 +35,10 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
 
   protected EventExecutorGroup group;
 
-  /** Fallback priority: handlerInstance404 > handlerClass404 > DefaultHandler404.INSTANCE */
+  /** Fallback priority: handlerInstance404, handlerClass404, DefaultHandler404.INSTANCE */
   protected ChannelInboundHandler handlerInstance404;
 
-  /** Fallback priority: handlerInstance404 > handlerClass404 > DefaultHandler404.INSTANCE */
+  /** Fallback priority: handlerInstance404, handlerClass404, DefaultHandler404.INSTANCE */
   protected Class<? extends ChannelInboundHandler> handlerClass404;
 
   //----------------------------------------------------------------------------
