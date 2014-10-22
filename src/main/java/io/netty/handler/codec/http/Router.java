@@ -26,6 +26,9 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
   protected final Map<HttpMethod, jauter.Router<Object>> routers =
       new HashMap<HttpMethod, jauter.Router<Object>>();
 
+  protected final jauter.Router<Object> anyMethodRouter =
+      new jauter.Router<Object>();
+
   protected final EventExecutorGroup group;
 
   protected final ChannelInboundHandler handler404;
@@ -60,21 +63,56 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
   //----------------------------------------------------------------------------
 
   public Router pattern(HttpMethod method, String path, ChannelInboundHandler handlerInstance) {
-    return _pattern(method, path, handlerInstance);
+    getRouter(method).pattern(path, handlerInstance);
+    return this;
   }
 
   public Router pattern(HttpMethod method, String path, Class<? extends ChannelInboundHandler> handlerClass) {
-    return _pattern(method, path, handlerClass);
+    getRouter(method).pattern(path, handlerClass);
+    return this;
   }
 
-  private Router _pattern(HttpMethod method, String path, Object target) {
+  public Router patternFirst(HttpMethod method, String path, ChannelInboundHandler handlerInstance) {
+    getRouter(method).patternFirst(path, handlerInstance);
+    return this;
+  }
+
+  public Router patternFirstFirst(HttpMethod method, String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    getRouter(method).patternFirst(path, handlerClass);
+    return this;
+  }
+
+  public Router patternLast(HttpMethod method, String path, ChannelInboundHandler handlerInstance) {
+    getRouter(method).patternLast(path, handlerInstance);
+    return this;
+  }
+
+  public Router patternLast(HttpMethod method, String path, Class<? extends ChannelInboundHandler> handlerClass) {
+    getRouter(method).patternLast(path, handlerClass);
+    return this;
+  }
+
+  private jauter.Router<Object> getRouter(HttpMethod method) {
+    if (method == null) return anyMethodRouter;
+
     jauter.Router<Object> jr = routers.get(method);
     if (jr == null) {
       jr = new jauter.Router<Object>();
       routers.put(method, jr);
     }
-    jr.pattern(path, target);
-    return this;
+    return jr;
+  }
+
+  //----------------------------------------------------------------------------
+
+  public void removeTarget(Object target) {
+    for (jauter.Router<Object> jr : routers.values()) jr.removeTarget(target);
+    anyMethodRouter.removeTarget(target);
+  }
+
+  public void removePath(String path) {
+    for (jauter.Router<Object> jr : routers.values()) jr.removePath(path);
+    anyMethodRouter.removePath(path);
   }
 
   //----------------------------------------------------------------------------
@@ -88,7 +126,7 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
     }
 
     HttpMethod            method  = req.getMethod();
-    jauter.Router<Object> jrouter = routers.get(method);
+    jauter.Router<Object> jrouter = (method == null)? anyMethodRouter : routers.get(method);
     ChannelInboundHandler handler = handler404;
 
     String                uri     = req.getUri();
@@ -149,7 +187,7 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
   }
 
   private String _path(HttpMethod method, Object target, Object... params) {
-    jauter.Router<Object> router = routers.get(method);
+    jauter.Router<Object> router = (method == null)? anyMethodRouter : routers.get(method);
     return (router == null)? null : router.path(target);
   }
 

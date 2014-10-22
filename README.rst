@@ -35,11 +35,32 @@ Create router
   import io.netty.handler.codec.http.Router;
 
   Router router = new Router()
-    .pattern(HttpMethod.GET,  "/articles",     IndexHandler.class)
-    .pattern(HttpMethod.GET,  "/articles/:id", ShowHandler.class)
-    .pattern(HttpMethod.POST, "/articles",     CreateHandler.class);
+    .pattern     (HttpMethod.GET,  "/articles",     IndexHandler.class)
+    .pattern     (HttpMethod.GET,  "/articles/:id", ShowHandler.class)
+    .pattern     (HttpMethod.POST, "/articles",     CreateHandler.class)
+    .pattern     (HttpMethod.GET,  "/download/:*",  DownloadHandler.class)      // ":*" must be the last token
+    .patternFirst(HttpMethod.GET,  "/articles/new", NewHandler.class)           // This will be matched first
+    .patternLast (null,            "/:*",           NotFound404Handler.class);  // This will be matched last
 
-Instead of using handler class, you can use handler instance:
+Set ``null`` as HTTP method means that all methods will be matched.
+
+Slashes at both ends are ignored, so these are the same:
+
+::
+
+  router.pattern(HttpMethod.GET, "articles",   IndexHandler.class)
+  router.pattern(HttpMethod.GET, "/articles",  IndexHandler.class)
+  router.pattern(HttpMethod.GET, "/articles/", IndexHandler.class)
+
+You can remove routes by target or by path:
+
+::
+
+  router.removeTarget(IndexHandler.class)
+  router.removePath("/articles")
+
+Instead of using handler class, you can use handler instance. In this case,
+the handler class should be annotated with ``@io.netty.channel.ChannelHandler.Sharable``:
 
 ::
 

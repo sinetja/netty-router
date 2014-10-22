@@ -4,6 +4,7 @@ import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.Unpooled
 
 import io.netty.channel.{
+  ChannelHandler,
   ChannelHandlerContext,
   ChannelInitializer,
   ChannelFutureListener,
@@ -55,6 +56,7 @@ object PipelineInitializer extends ChannelInitializer[SocketChannel] {
   }
 }
 
+@ChannelHandler.Sharable
 class RequestHandler extends SimpleChannelInboundHandler[Routed] {
   override def channelRead0(ctx: ChannelHandlerContext, routed: Routed) {
     val content =
