@@ -55,12 +55,11 @@ When a path is matched:
 * ``router`` will create a new instance of the matched handler class, and add it
   to the pipeline, right after ``router`` itself. If you use handler instance as
   ``deleteHandler`` above, ``router`` doesn't have to create a new instance.
-* ``router`` will add path params and query params to the request as headers.
-* ``router`` will passes the current HTTP request to your handler.
+* ``router`` will pass a ``Routed`` (see below) to your handler.
 
 ::
 
-  public class ExampleInitializer extends ChannelInitializer<SocketChannel> {
+  public class PipelineInitializer extends ChannelInitializer<SocketChannel> {
     private static final router = new Router()
       .pattern(HttpMethod.GET, "/",             new ExampleHandler())
       .pattern(HttpMethod.GET, "/articles/:id", ExampleHandler.class)
@@ -72,30 +71,32 @@ When a path is matched:
     }
   }
 
+Routed contains:
+
+::
+
+  HttpRequest               request()
+  String                    path()
+  Map<String, String>       pathParams()
+  Map<String, List<String>> queryParams()
+
 Extract params from request
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When the request is routed to your handler by ``router``, you can extract path
-params and query params from its headers:
+There are some utility methods in ``Routed``:
 
 ::
 
-  // Use path params first, then fall back to query params.
+  // Returns path param first, then falls back to the first query param, or null.
   // Usually, you want to use this method most of the time.
-  String Router.param(req)
+  String       param(name)
 
   // Both path params and query params are returned.
   // Empty list is returned if there are no such params.
-  List<String> Router.params(req)
+  List<String> params(name)
 
-  Map<String, String>       Router.pathParams(req)
-  Map<String, List<String>> Router.queryParams(req)
-
-If you want to clean headers set by the router:
-
-::
-
-  Router.cleanHeaders(req);
+  // Returns the first query param, or null.
+  List<String> queryParam(name)
 
 404 Not Found handler
 ~~~~~~~~~~~~~~~~~~~~~

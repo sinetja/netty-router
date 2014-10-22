@@ -15,7 +15,7 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
 
-object Example {
+object ExampleApp {
   def main(args: Array[String]) {
     Server.start(8000)
   }
@@ -31,7 +31,7 @@ object Server {
      .childOption(ChannelOption.TCP_NODELAY,  java.lang.Boolean.TRUE)
      .childOption(ChannelOption.SO_KEEPALIVE, java.lang.Boolean.TRUE)
      .channel(classOf[NioServerSocketChannel])
-     .childHandler(ExampleInitializer)
+     .childHandler(PipelineInitializer)
 
     val ch = b.bind(port).sync().channel
 
@@ -43,10 +43,10 @@ object Server {
   }
 }
 
-object ExampleInitializer extends ChannelInitializer[SocketChannel] {
+object PipelineInitializer extends ChannelInitializer[SocketChannel] {
   private val router = (new Router)
-    .pattern(HttpMethod.GET, "/",             new ExampleHandler)
-    .pattern(HttpMethod.GET, "/articles/:id", classOf[ExampleHandler])
+    .pattern(HttpMethod.GET, "/",             new RequestHandler)
+    .pattern(HttpMethod.GET, "/articles/:id", classOf[RequestHandler])
 
   def initChannel(ch: SocketChannel) {
     val p = ch.pipeline
@@ -55,18 +55,20 @@ object ExampleInitializer extends ChannelInitializer[SocketChannel] {
   }
 }
 
-class ExampleHandler extends SimpleChannelInboundHandler[HttpRequest] {
-  override def channelRead0(ctx: ChannelHandlerContext, req: HttpRequest) {
-    val pathParams  = Router.pathParams(req)
-    val queryParams = Router.queryParams(req)
-
+class RequestHandler extends SimpleChannelInboundHandler[Routed] {
+  override def channelRead0(ctx: ChannelHandlerContext, routed: Routed) {
+    val content =
+      s"req: ${routed.request()}\n" +
+      s"path: ${routed.path()}, " +
+      s"pathParams: ${routed.pathParams}, " +
+      s"queryParams: ${routed.queryParams}"
     val res = new DefaultFullHttpResponse(
       HttpVersion.HTTP_1_1, HttpResponseStatus.OK,
-      Unpooled.copiedBuffer(s"pathParams: $pathParams, queryParams: $queryParams".getBytes)
+      Unpooled.copiedBuffer(content.getBytes)
     )
     res.headers.set(HttpHeaders.Names.CONTENT_TYPE,   "text/plain")
     res.headers.set(HttpHeaders.Names.CONTENT_LENGTH, res.content.readableBytes)
 
-    Router.keepAliveWriteAndFlush(ctx, req, res)
+    Router.keepAliveWriteAndFlush(ctx, routed.request(), res)
   }
 }

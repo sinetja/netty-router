@@ -1,12 +1,7 @@
 package io.netty.handler.codec.http;
 
-import jauter.Routed;
-
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -19,20 +14,21 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.EventExecutorGroup;
 
+/**
+ * Inbound handler that converts HttpRequest to Routed and passes Routed to the
+ * matched handler.
+ */
 @ChannelHandler.Sharable
 public class Router extends SimpleChannelInboundHandler<HttpRequest> {
   public static final String ROUTER_HANDLER_NAME = Router.class.getName() + "_ROUTER_HANDLER";
   public static final String ROUTED_HANDLER_NAME = Router.class.getName() + "_ROUTED_HANDLER";
 
-  public static final String PATH_PARAM_HEADER_PREFIX  = Router.class.getName() + "_PATH_";
-  public static final String QUERY_PARAM_HEADER_PREFIX = Router.class.getName() + "_QUERY_";
-
-  private final Map<HttpMethod, jauter.Router<Object>> routers =
+  protected final Map<HttpMethod, jauter.Router<Object>> routers =
       new HashMap<HttpMethod, jauter.Router<Object>>();
 
-  private final EventExecutorGroup group;
+  protected final EventExecutorGroup group;
 
-  private final ChannelInboundHandler handler404;
+  protected final ChannelInboundHandler handler404;
 
   //----------------------------------------------------------------------------
 
@@ -92,21 +88,19 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
     }
 
     HttpMethod            method  = req.getMethod();
-    jauter.Router<Object> jr      = routers.get(method);
+    jauter.Router<Object> jrouter = routers.get(method);
     ChannelInboundHandler handler = handler404;
 
+    String                uri     = req.getUri();
+    QueryStringDecoder    qsd     = new QueryStringDecoder(uri);
+    Map<String, String>   pathParams;
+
     // Create handler
-    if (jr != null) {
-      // Params will be added to headers
-      HttpHeaders headers = req.headers();
-
-      String             uri    = req.getUri();
-      QueryStringDecoder qsd    = new QueryStringDecoder(uri);
-      String             path   = qsd.path();
-      Routed<Object>     routed = jr.route(path);
-
-      if (routed != null) {
-        Object target = routed.target();
+    if (jrouter != null) {
+      jauter.Routed<Object> jrouted = jrouter.route(qsd.path());
+      if (jrouted != null) {
+        // Create handler
+        Object target = jrouted.target();
         if (target instanceof ChannelInboundHandler) {
           handler = (ChannelInboundHandler) target;
         } else {
@@ -114,19 +108,16 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
           handler = klass.newInstance();
         }
 
-        for (Map.Entry<String, String> entry : routed.params().entrySet()) {
-          String key   = entry.getKey();
-          String value = entry.getValue();
-          headers.add(PATH_PARAM_HEADER_PREFIX + key, value);
-        }
+        pathParams = jrouted.params();
+      } else {
+        pathParams = new HashMap<String, String>();
       }
-
-      for (Map.Entry<String, List<String>> entry : qsd.parameters().entrySet()) {
-        String       key    = entry.getKey();
-        List<String> values = entry.getValue();
-        headers.add(QUERY_PARAM_HEADER_PREFIX + key, values);
-      }
+    } else {
+      pathParams = new HashMap<String, String>();
     }
+
+    ReferenceCountUtil.retain(req);
+    Routed routed = new Routed(req, qsd.path(), pathParams, qsd.parameters());
 
     // The handler may have been added (keep alive)
     ChannelPipeline pipeline     = ctx.pipeline();
@@ -142,93 +133,8 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
       }
     }
 
-    // Pass request to the routed handler
-    ctx.fireChannelRead(ReferenceCountUtil.retain(req));
-  }
-
-  //----------------------------------------------------------------------------
-  // Utilities to extract params from headers.
-
-  public static String pathParam(HttpRequest req, String name) {
-    HttpHeaders headers = req.headers();
-    String      key     = PATH_PARAM_HEADER_PREFIX + name;
-    return headers.get(key);
-  }
-
-  public static String queryParam(HttpRequest req, String name) {
-    HttpHeaders headers = req.headers();
-    String      key     = QUERY_PARAM_HEADER_PREFIX + name;
-    return headers.get(key);
-  }
-
-  /** Use path params first, then fall back to query params. */
-  public static String param(HttpRequest req, String name) {
-    String pathValue = pathParam(req, name);
-    return (pathValue == null)? queryParam(req, name) : pathValue;
-  }
-
-  /**
-   * Both path params and query params are returned.
-   * Empty list is returned if there are no such params.
-   */
-  public static List<String> params(HttpRequest req, String name) {
-    HttpHeaders headers = req.headers();
-
-    String       pathKey    = PATH_PARAM_HEADER_PREFIX + name;
-    List<String> pathValues = headers.getAll(pathKey);
-
-    String       queryKey    = QUERY_PARAM_HEADER_PREFIX + name;
-    List<String> queryValues = headers.getAll(queryKey);
-
-    pathValues.addAll(queryValues);
-    return pathValues;
-  }
-
-  public static Map<String, String> pathParams(HttpRequest req) {
-    Map<String, String> ret = new HashMap<String, String>();
-    for (Entry<String, String> entry : req.headers().entries()) {
-      String key   = entry.getKey();
-      String value = entry.getValue();
-      if (key.startsWith(PATH_PARAM_HEADER_PREFIX)) {
-        String withoutPrefix = key.substring(PATH_PARAM_HEADER_PREFIX.length());
-        ret.put(withoutPrefix, value);
-      }
-    }
-    return ret;
-  }
-
-  public static Map<String, List<String>> queryParams(HttpRequest req) {
-    Map<String, List<String>> ret = new HashMap<String, List<String>>();
-    for (Entry<String, String> entry : req.headers().entries()) {
-      String key   = entry.getKey();
-      if (key.startsWith(QUERY_PARAM_HEADER_PREFIX)) {
-        String value = entry.getValue();
-
-        String       withoutPrefix = key.substring(QUERY_PARAM_HEADER_PREFIX.length());
-        List<String> values        = ret.get(withoutPrefix);
-        if (values == null) {
-          values = new ArrayList<String>();
-          ret.put(withoutPrefix, values);
-        }
-
-        values.add(value);
-      }
-    }
-    return ret;
-  }
-
-  /** Cleans path params and query params set by Router in headers. */
-  public static void cleanHeaders(HttpRequest req) {
-    HttpHeaders clean = new DefaultHttpHeaders(false);
-    for (Entry<String, String> entry : req.headers().entries()) {
-      String key   = entry.getKey();
-      if (!key.startsWith(PATH_PARAM_HEADER_PREFIX) && !key.startsWith(QUERY_PARAM_HEADER_PREFIX)) {
-        String value = entry.getValue();
-        clean.add(key, value);
-      }
-    }
-
-    req.headers().set(clean);
+    // Pass to the routed handler
+    ctx.fireChannelRead(routed);
   }
 
   //----------------------------------------------------------------------------
