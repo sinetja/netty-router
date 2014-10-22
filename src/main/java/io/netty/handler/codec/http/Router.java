@@ -125,31 +125,36 @@ public class Router extends SimpleChannelInboundHandler<HttpRequest> {
       return;
     }
 
+    // Get router, using anyMethodRouter as fallback
     HttpMethod            method  = req.getMethod();
-    jauter.Router<Object> jrouter = (method == null)? anyMethodRouter : routers.get(method);
+    jauter.Router<Object> jrouter = routers.get(method);
+    if (jrouter == null)  jrouter = anyMethodRouter;
+
+    // Route
+    QueryStringDecoder    qsd     = new QueryStringDecoder(req.getUri());
+    jauter.Routed<Object> jrouted = jrouter.route(qsd.path());
+
+    // Route again, using anyMethodRouter as fallback
+    if (jrouted == null && jrouter != anyMethodRouter) {
+      jrouter = anyMethodRouter;
+      jrouted = jrouter.route(qsd.path());
+    }
+
+    // Set handler (default: 404) and pathParams
     ChannelInboundHandler handler = handler404;
-
-    String                uri     = req.getUri();
-    QueryStringDecoder    qsd     = new QueryStringDecoder(uri);
     Map<String, String>   pathParams;
-
-    // Create handler
-    if (jrouter != null) {
-      jauter.Routed<Object> jrouted = jrouter.route(qsd.path());
-      if (jrouted != null) {
-        // Create handler
-        Object target = jrouted.target();
-        if (target instanceof ChannelInboundHandler) {
-          handler = (ChannelInboundHandler) target;
-        } else {
-          Class<? extends ChannelInboundHandler> klass = (Class<? extends ChannelInboundHandler>) target;
-          handler = klass.newInstance();
-        }
-
-        pathParams = jrouted.params();
+    if (jrouted != null) {
+      Object target = jrouted.target();
+      if (target instanceof ChannelInboundHandler) {
+        // Get handler from route target
+        handler = (ChannelInboundHandler) target;
       } else {
-        pathParams = new HashMap<String, String>();
+        // Create handler from class
+        Class<? extends ChannelInboundHandler> klass = (Class<? extends ChannelInboundHandler>) target;
+        handler = klass.newInstance();
       }
+
+      pathParams = jrouted.params();
     } else {
       pathParams = new HashMap<String, String>();
     }
