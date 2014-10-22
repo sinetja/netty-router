@@ -194,7 +194,7 @@ Use with Maven
   <dependency>
     <groupId>tv.cntt</groupId>
     <artifactId>netty-router</artifactId>
-    <version>1.3</version>
+    <version>1.4</version>
   </dependency>
 
 Tip: You should also add `Javassist <http://javassist.org/>`_, it boosts Netty 4+ speed.

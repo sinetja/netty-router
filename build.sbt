@@ -2,7 +2,7 @@ organization := "tv.cntt"
 
 name         := "netty-router"
 
-version      := "1.3-SNAPSHOT"
+version      := "1.4-SNAPSHOT"
 
 //------------------------------------------------------------------------------
 
