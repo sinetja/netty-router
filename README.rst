@@ -64,6 +64,8 @@ the handler class should be annotated with ``@io.netty.channel.ChannelHandler.Sh
 
 ::
 
+  // Optimize speed by precreating handler.
+  // Optimize memory by sharing one handler for all requests.
   DeleteHandler deleteHandler = new DeleteHandler();
   router.pattern(HttpMethod.DELETE, "/articles/:id", deleteHandler);
 
@@ -185,12 +187,10 @@ Convenient way to specify params:
   // => "/articles/123"
 
 You can specify an instance in pattern, but use the instance's class to create
-path. This feature is useful if you want to create web frameworks:
+path.
 
 ::
 
-  // Optimize speed by precreating.
-  // Optimize memory by sharing for all requests.
   IndexHandler cachedInstance = new IndexHandler();
 
   Router router = new Router<Object>()
