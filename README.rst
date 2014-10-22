@@ -92,7 +92,9 @@ When a path is matched:
     public void initChannel(SocketChannel ch) {
       ChannelPipeline p = ch.pipeline();
       p.addLast(new HttpServerCodec);
-      p.addLast(router.name(), router);  // Must use router.name()
+      // Must use router.name() so that the router can add the
+      // routed handler right after itself later
+      p.addLast(router.name(), router);
     }
   }
 
