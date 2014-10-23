@@ -18,17 +18,17 @@ publishArtifact in Test := false
 pomIncludeRepository := { _ => false }
 
 pomExtra := (
-  <url>https://github.com/xitrum-framework/netty-router</url>
+  <url>https://github.com/sinetja/netty-router</url>
   <licenses>
     <license>
       <name>MIT</name>
-      <url>https://github.com/xitrum-framework/netty-router/blob/master/MIT-LICENSE</url>
+      <url>https://github.com/sinetja/netty-router/blob/master/MIT-LICENSE</url>
       <distribution>repo</distribution>
     </license>
   </licenses>
   <scm>
-    <url>git@github.com:xitrum-framework/netty-router.git</url>
-    <connection>scm:git:git@github.com:xitrum-framework/netty-router.git</connection>
+    <url>git@github.com:sinetja/netty-router.git</url>
+    <connection>scm:git:git@github.com:sinetja/netty-router.git</connection>
   </scm>
   <developers>
     <developer>

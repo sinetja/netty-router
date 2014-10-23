@@ -1,10 +1,10 @@
 This tiny Java library is intended for use with Netty 4, to route HTTP requests
 to your Netty handlers. It is based on
-`Jauter <https://github.com/xitrum-framework/jauter>`_.
+`Jauter <https://github.com/sinetja/jauter>`_.
 
-netty-router is used in `Sinetja <https://github.com/xitrum-framework/sinetja>`_.
+netty-router is used in `Sinetja <https://github.com/sinetja/sinetja>`_.
 
-See `test <https://github.com/xitrum-framework/netty-router/tree/master/src/test/scala/io/netty/handler/codec/http>`_
+See `test <https://github.com/sinetja/netty-router/tree/master/src/test/scala/io/netty/handler/codec/http>`_
 for example.
 
 Create router
