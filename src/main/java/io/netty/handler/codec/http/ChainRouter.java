@@ -125,6 +125,109 @@ public class ChainRouter<T extends ChainRouter<T>> extends SimpleChannelInboundH
 
   //----------------------------------------------------------------------------
 
+  public void removeTarget(Object target) {
+    for (jauter.Router<Object> jr : routers.values()) jr.removeTarget(target);
+    anyMethodRouter.removeTarget(target);
+  }
+
+  public void removePath(String path) {
+    for (jauter.Router<Object> jr : routers.values()) jr.removePath(path);
+    anyMethodRouter.removePath(path);
+  }
+
+  //----------------------------------------------------------------------------
+
+  @Override
+  public void channelRead0(ChannelHandlerContext ctx, HttpRequest req) throws InstantiationException, IllegalAccessException {
+    if (HttpHeaders.is100ContinueExpected(req)) {
+      ctx.writeAndFlush(new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.CONTINUE));
+      return;
+    }
+
+    // Get router, using anyMethodRouter as fallback
+    HttpMethod            method  = req.getMethod();
+    jauter.Router<Object> jrouter = routers.get(method);
+    if (jrouter == null)  jrouter = anyMethodRouter;
+
+    // Route
+    QueryStringDecoder    qsd     = new QueryStringDecoder(req.getUri());
+    jauter.Routed<Object> jrouted = jrouter.route(qsd.path());
+
+    // Route again, using anyMethodRouter as fallback
+    if (jrouted == null && jrouter != anyMethodRouter) {
+      jrouter = anyMethodRouter;
+      jrouted = jrouter.route(qsd.path());
+    }
+
+    // Set handler and pathParams
+    ChannelInboundHandler handler = null;
+    Map<String, String>   pathParams;
+    if (jrouted != null) {
+      Object target = jrouted.target();
+      if (target instanceof ChannelInboundHandler) {
+        // Get handler from route target
+        handler = (ChannelInboundHandler) target;
+      } else {
+        // Create handler from class
+        Class<? extends ChannelInboundHandler> klass = (Class<? extends ChannelInboundHandler>) target;
+        handler = klass.newInstance();
+      }
+
+      pathParams = jrouted.params();
+    } else {
+      pathParams = new HashMap<String, String>();
+    }
+
+    // If handler is not set, use fallback: (default: DefaultHandler404.INSTANCE)
+    boolean notFound404 = (handler == null);
+    if (notFound404) {
+      if (handlerInstance404 != null)
+        handler = handlerInstance404;
+      else if (handlerClass404 != null)
+        handler = handlerClass404.newInstance();
+      else
+        handler = DefaultHandler404.INSTANCE;
+    }
+
+    ReferenceCountUtil.retain(req);
+    Routed routed = new Routed(notFound404, req, qsd.path(), pathParams, qsd.parameters());
+
+    // The handler may have been added (keep alive)
+    ChannelPipeline pipeline     = ctx.pipeline();
+    ChannelHandler  addedHandler = pipeline.get(ROUTED_HANDLER_NAME);
+    if (handler != addedHandler) {
+      if (addedHandler == null) {
+        if (group == null)
+          pipeline.addAfter(ROUTER_HANDLER_NAME, ROUTED_HANDLER_NAME, handler);
+        else
+          pipeline.addAfter(group, ROUTER_HANDLER_NAME, ROUTED_HANDLER_NAME, handler);
+      } else {
+        pipeline.replace(addedHandler, ROUTED_HANDLER_NAME, handler);
+      }
+    }
+
+    // Pass to the routed handler
+    ctx.fireChannelRead(routed);
+  }
+
+  //----------------------------------------------------------------------------
+  // Reverse routing.
+
+  public String path(HttpMethod method, ChannelInboundHandler handlerInstance, Object... params) {
+    return _path(method, handlerInstance, params);
+  }
+
+  public String path(HttpMethod method, Class<? extends ChannelInboundHandler> handlerClass, Object... params) {
+    return _path(method, handlerClass, params);
+  }
+
+  private String _path(HttpMethod method, Object target, Object... params) {
+    jauter.Router<Object> router = (method == null)? anyMethodRouter : routers.get(method);
+    return (router == null)? null : router.path(target);
+  }
+
+  //----------------------------------------------------------------------------
+
   public T CONNECT(String path, ChannelInboundHandler handlerInstance) {
     return pattern(HttpMethod.CONNECT, path, handlerInstance);
   }
@@ -373,108 +476,5 @@ public class ChainRouter<T extends ChainRouter<T>> extends SimpleChannelInboundH
 
   public T ANY_LAST(String path, Class<? extends ChannelInboundHandler> handlerClass) {
     return patternLast(null, path, handlerClass);
-  }
-
-  //----------------------------------------------------------------------------
-
-  public void removeTarget(Object target) {
-    for (jauter.Router<Object> jr : routers.values()) jr.removeTarget(target);
-    anyMethodRouter.removeTarget(target);
-  }
-
-  public void removePath(String path) {
-    for (jauter.Router<Object> jr : routers.values()) jr.removePath(path);
-    anyMethodRouter.removePath(path);
-  }
-
-  //----------------------------------------------------------------------------
-
-  @Override
-  public void channelRead0(ChannelHandlerContext ctx, HttpRequest req) throws InstantiationException, IllegalAccessException {
-    if (HttpHeaders.is100ContinueExpected(req)) {
-      ctx.writeAndFlush(new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.CONTINUE));
-      return;
-    }
-
-    // Get router, using anyMethodRouter as fallback
-    HttpMethod            method  = req.getMethod();
-    jauter.Router<Object> jrouter = routers.get(method);
-    if (jrouter == null)  jrouter = anyMethodRouter;
-
-    // Route
-    QueryStringDecoder    qsd     = new QueryStringDecoder(req.getUri());
-    jauter.Routed<Object> jrouted = jrouter.route(qsd.path());
-
-    // Route again, using anyMethodRouter as fallback
-    if (jrouted == null && jrouter != anyMethodRouter) {
-      jrouter = anyMethodRouter;
-      jrouted = jrouter.route(qsd.path());
-    }
-
-    // Set handler and pathParams
-    ChannelInboundHandler handler = null;
-    Map<String, String>   pathParams;
-    if (jrouted != null) {
-      Object target = jrouted.target();
-      if (target instanceof ChannelInboundHandler) {
-        // Get handler from route target
-        handler = (ChannelInboundHandler) target;
-      } else {
-        // Create handler from class
-        Class<? extends ChannelInboundHandler> klass = (Class<? extends ChannelInboundHandler>) target;
-        handler = klass.newInstance();
-      }
-
-      pathParams = jrouted.params();
-    } else {
-      pathParams = new HashMap<String, String>();
-    }
-
-    // If handler is not set, use fallback: (default: DefaultHandler404.INSTANCE)
-    boolean notFound404 = (handler == null);
-    if (notFound404) {
-      if (handlerInstance404 != null)
-        handler = handlerInstance404;
-      else if (handlerClass404 != null)
-        handler = handlerClass404.newInstance();
-      else
-        handler = DefaultHandler404.INSTANCE;
-    }
-
-    ReferenceCountUtil.retain(req);
-    Routed routed = new Routed(notFound404, req, qsd.path(), pathParams, qsd.parameters());
-
-    // The handler may have been added (keep alive)
-    ChannelPipeline pipeline     = ctx.pipeline();
-    ChannelHandler  addedHandler = pipeline.get(ROUTED_HANDLER_NAME);
-    if (handler != addedHandler) {
-      if (addedHandler == null) {
-        if (group == null)
-          pipeline.addAfter(ROUTER_HANDLER_NAME, ROUTED_HANDLER_NAME, handler);
-        else
-          pipeline.addAfter(group, ROUTER_HANDLER_NAME, ROUTED_HANDLER_NAME, handler);
-      } else {
-        pipeline.replace(addedHandler, ROUTED_HANDLER_NAME, handler);
-      }
-    }
-
-    // Pass to the routed handler
-    ctx.fireChannelRead(routed);
-  }
-
-  //----------------------------------------------------------------------------
-  // Reverse routing.
-
-  public String path(HttpMethod method, ChannelInboundHandler handlerInstance, Object... params) {
-    return _path(method, handlerInstance, params);
-  }
-
-  public String path(HttpMethod method, Class<? extends ChannelInboundHandler> handlerClass, Object... params) {
-    return _path(method, handlerClass, params);
-  }
-
-  private String _path(HttpMethod method, Object target, Object... params) {
-    jauter.Router<Object> router = (method == null)? anyMethodRouter : routers.get(method);
-    return (router == null)? null : router.path(target);
   }
 }
