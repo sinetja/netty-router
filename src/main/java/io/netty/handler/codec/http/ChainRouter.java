@@ -431,7 +431,8 @@ public class ChainRouter<T extends ChainRouter<T>> extends SimpleChannelInboundH
     }
 
     // If handler is not set, use fallback: (default: DefaultHandler404.INSTANCE)
-    if (handler == null) {
+    boolean notFound404 = (handler == null);
+    if (notFound404) {
       if (handlerInstance404 != null)
         handler = handlerInstance404;
       else if (handlerClass404 != null)
@@ -441,7 +442,7 @@ public class ChainRouter<T extends ChainRouter<T>> extends SimpleChannelInboundH
     }
 
     ReferenceCountUtil.retain(req);
-    Routed routed = new Routed(req, qsd.path(), pathParams, qsd.parameters());
+    Routed routed = new Routed(notFound404, req, qsd.path(), pathParams, qsd.parameters());
 
     // The handler may have been added (keep alive)
     ChannelPipeline pipeline     = ctx.pipeline();

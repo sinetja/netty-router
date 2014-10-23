@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 public class Routed implements ReferenceCounted {
+  protected final boolean                   notFound404;
   protected final HttpRequest               request;
   protected final String                    path;
   protected final Map<String, String>       pathParams;
@@ -16,13 +17,24 @@ public class Routed implements ReferenceCounted {
 
   //----------------------------------------------------------------------------
 
-  public Routed(HttpRequest request, String path, Map<String, String> pathParams, Map<String, List<String>> queryParams) {
+  public Routed(
+      boolean                   notFound404,
+      HttpRequest               request,
+      String                    path,
+      Map<String, String>       pathParams,
+      Map<String, List<String>> queryParams)
+  {
+    this.notFound404 = notFound404;
     this.request     = request;
     this.path        = path;
     this.pathParams  = pathParams;
     this.queryParams = queryParams;
 
     requestAsReferenceCounted = (request instanceof ReferenceCounted)? (ReferenceCounted) request : null;
+  }
+
+  public boolean notFound404() {
+    return notFound404;
   }
 
   public HttpRequest request() {

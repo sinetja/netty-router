@@ -79,6 +79,7 @@ Routed contains:
 
 ::
 
+  boolean                   notFound404()  // See "404 Not Found handler" below
   HttpRequest               request()
   String                    path()
   Map<String, String>       pathParams()
@@ -117,6 +118,9 @@ If you want to pass your own 404 Not Found handler:
 ::
 
   router.handler404(My404Handler.class);
+
+You know if your handler is called because of 404 Not Found or not, by checking
+``Routed#notFound404()``.
 
 You can also use instance (your handler must be `sharable <http://netty.io/4.0/api/io/netty/channel/ChannelHandler.Sharable.html>`_):
 
@@ -194,10 +198,12 @@ Use with Maven
   <dependency>
     <groupId>tv.cntt</groupId>
     <artifactId>netty-router</artifactId>
-    <version>1.4</version>
+    <version>1.5</version>
   </dependency>
 
-Tip: You should also add `Javassist <http://javassist.org/>`_, it boosts Netty 4+ speed.
+Tip:
+In your Netty project, you should also add `Javassist <http://javassist.org/>`_,
+it boosts Netty speed.
 
 ::
 
