@@ -1,11 +1,11 @@
 This tiny Java library is intended for use with Netty 4, to route HTTP requests
-to your Netty handlers. It is based on
-`Jauter <https://github.com/sinetja/jauter>`_.
-
-netty-router is used in `Sinetja <https://github.com/sinetja/sinetja>`_.
+to your Netty handlers.
 
 See `test <https://github.com/sinetja/netty-router/tree/master/src/test/scala/io/netty/handler/codec/http>`_
 for example.
+
+netty-router is based on `Jauter <https://github.com/sinetja/jauter>`_.
+See also `Sinetja <https://github.com/sinetja/sinetja>`_.
 
 Create router
 ~~~~~~~~~~~~~
@@ -198,7 +198,7 @@ Use with Maven
   <dependency>
     <groupId>tv.cntt</groupId>
     <artifactId>netty-router</artifactId>
-    <version>1.5</version>
+    <version>1.6</version>
   </dependency>
 
 Tip:

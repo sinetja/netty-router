@@ -25,11 +25,17 @@ public class ChainRouter<T extends ChainRouter<T>> extends SimpleChannelInboundH
 
   //----------------------------------------------------------------------------
 
-  protected final Map<HttpMethod, jauter.Router<Object>> routers =
-      new HashMap<HttpMethod, jauter.Router<Object>>();
-
-  protected final jauter.Router<Object> anyMethodRouter =
-      new jauter.Router<Object>();
+  protected final jauter.Router<HttpMethod, Object> router = new jauter.Router<HttpMethod, Object>() {
+    protected HttpMethod CONNECT() { return HttpMethod.CONNECT; }
+    protected HttpMethod DELETE()  { return HttpMethod.DELETE ; }
+    protected HttpMethod GET()     { return HttpMethod.GET    ; }
+    protected HttpMethod HEAD()    { return HttpMethod.HEAD   ; }
+    protected HttpMethod OPTIONS() { return HttpMethod.OPTIONS; }
+    protected HttpMethod PATCH()   { return HttpMethod.PATCH  ; }
+    protected HttpMethod POST()    { return HttpMethod.POST   ; }
+    protected HttpMethod PUT()     { return HttpMethod.PUT    ; }
+    protected HttpMethod TRACE()   { return HttpMethod.TRACE  ; }
+  };
 
   //----------------------------------------------------------------------------
 
@@ -83,56 +89,43 @@ public class ChainRouter<T extends ChainRouter<T>> extends SimpleChannelInboundH
   //----------------------------------------------------------------------------
 
   public T pattern(HttpMethod method, String path, ChannelInboundHandler handlerInstance) {
-    getRouter(method).pattern(path, handlerInstance);
+    router.pattern(method, path, handlerInstance);
     return (T) this;
   }
 
   public T pattern(HttpMethod method, String path, Class<? extends ChannelInboundHandler> handlerClass) {
-    getRouter(method).pattern(path, handlerClass);
+    router.pattern(method, path, handlerClass);
     return (T) this;
   }
 
   public T patternFirst(HttpMethod method, String path, ChannelInboundHandler handlerInstance) {
-    getRouter(method).patternFirst(path, handlerInstance);
+    router.patternFirst(method, path, handlerInstance);
     return (T) this;
   }
 
   public T patternFirst(HttpMethod method, String path, Class<? extends ChannelInboundHandler> handlerClass) {
-    getRouter(method).patternFirst(path, handlerClass);
+    router.patternFirst(method, path, handlerClass);
     return (T) this;
   }
 
   public T patternLast(HttpMethod method, String path, ChannelInboundHandler handlerInstance) {
-    getRouter(method).patternLast(path, handlerInstance);
+    router.patternLast(method, path, handlerInstance);
     return (T) this;
   }
 
   public T patternLast(HttpMethod method, String path, Class<? extends ChannelInboundHandler> handlerClass) {
-    getRouter(method).patternLast(path, handlerClass);
+    router.patternLast(method, path, handlerClass);
     return (T) this;
-  }
-
-  private jauter.Router<Object> getRouter(HttpMethod method) {
-    if (method == null) return anyMethodRouter;
-
-    jauter.Router<Object> jr = routers.get(method);
-    if (jr == null) {
-      jr = new jauter.Router<Object>();
-      routers.put(method, jr);
-    }
-    return jr;
   }
 
   //----------------------------------------------------------------------------
 
   public void removeTarget(Object target) {
-    for (jauter.Router<Object> jr : routers.values()) jr.removeTarget(target);
-    anyMethodRouter.removeTarget(target);
+    router.removeTarget(target);
   }
 
   public void removePath(String path) {
-    for (jauter.Router<Object> jr : routers.values()) jr.removePath(path);
-    anyMethodRouter.removePath(path);
+    router.removeTarget(path);
   }
 
   //----------------------------------------------------------------------------
@@ -144,20 +137,10 @@ public class ChainRouter<T extends ChainRouter<T>> extends SimpleChannelInboundH
       return;
     }
 
-    // Get router, using anyMethodRouter as fallback
-    HttpMethod            method  = req.getMethod();
-    jauter.Router<Object> jrouter = routers.get(method);
-    if (jrouter == null)  jrouter = anyMethodRouter;
-
     // Route
+    HttpMethod            method  = req.getMethod();
     QueryStringDecoder    qsd     = new QueryStringDecoder(req.getUri());
-    jauter.Routed<Object> jrouted = jrouter.route(qsd.path());
-
-    // Route again, using anyMethodRouter as fallback
-    if (jrouted == null && jrouter != anyMethodRouter) {
-      jrouter = anyMethodRouter;
-      jrouted = jrouter.route(qsd.path());
-    }
+    jauter.Routed<Object> jrouted = router.route(method, qsd.path());
 
     // Set handler and pathParams
     ChannelInboundHandler handler = null;
@@ -214,16 +197,11 @@ public class ChainRouter<T extends ChainRouter<T>> extends SimpleChannelInboundH
   // Reverse routing.
 
   public String path(HttpMethod method, ChannelInboundHandler handlerInstance, Object... params) {
-    return _path(method, handlerInstance, params);
+    return router.path(method, handlerInstance, params);
   }
 
   public String path(HttpMethod method, Class<? extends ChannelInboundHandler> handlerClass, Object... params) {
-    return _path(method, handlerClass, params);
-  }
-
-  private String _path(HttpMethod method, Object target, Object... params) {
-    jauter.Router<Object> router = (method == null)? anyMethodRouter : routers.get(method);
-    return (router == null)? null : router.path(target);
+    return router.path(method, handlerClass, params);
   }
 
   //----------------------------------------------------------------------------
