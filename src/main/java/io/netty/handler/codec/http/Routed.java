@@ -6,25 +6,28 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class Routed implements ReferenceCounted {
-  protected final boolean                   notFound404;
-  protected final HttpRequest               request;
-  protected final String                    path;
-  protected final Map<String, String>       pathParams;
-  protected final Map<String, List<String>> queryParams;
+public class Routed<T> implements ReferenceCounted {
+  private final T                         target;
+  private final boolean                   notFound;
+  private final HttpRequest               request;
+  private final String                    path;
+  private final Map<String, String>       pathParams;
+  private final Map<String, List<String>> queryParams;
 
-  protected final ReferenceCounted requestAsReferenceCounted;
+  private final ReferenceCounted requestAsReferenceCounted;
 
   //----------------------------------------------------------------------------
 
   public Routed(
-      boolean                   notFound404,
+      T                         target,
+      boolean                   notFound,
       HttpRequest               request,
       String                    path,
       Map<String, String>       pathParams,
       Map<String, List<String>> queryParams)
   {
-    this.notFound404 = notFound404;
+    this.target      = target;
+    this.notFound    = notFound;
     this.request     = request;
     this.path        = path;
     this.pathParams  = pathParams;
@@ -33,8 +36,12 @@ public class Routed implements ReferenceCounted {
     requestAsReferenceCounted = (request instanceof ReferenceCounted)? (ReferenceCounted) request : null;
   }
 
-  public boolean notFound404() {
-    return notFound404;
+  public T target() {
+    return target;
+  }
+
+  public boolean notFound() {
+    return notFound;
   }
 
   public HttpRequest request() {
