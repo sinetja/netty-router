@@ -18,16 +18,16 @@ import io.netty.handler.codec.http.QueryStringDecoder;
  * Sinetja.
  */
 @ChannelHandler.Sharable
-public abstract class AbstractHandler<T> extends SimpleChannelInboundHandler<HttpRequest> {
+public abstract class AbstractHandler<T, RouteLike extends MethodRouter<T, RouteLike>> extends SimpleChannelInboundHandler<HttpRequest> {
   private static final byte[] CONTENT_404 = "404 Not Found".getBytes();
 
-  private final MethodRouter<T> router;
+  private final MethodRouter<T, RouteLike> router;
 
-  public AbstractHandler(MethodRouter<T> router) {
+  public AbstractHandler(MethodRouter<T, RouteLike> router) {
     this.router = router;
   }
 
-  public MethodRouter<T> router() {
+  public MethodRouter<T, RouteLike> router() {
     return router;
   }
 

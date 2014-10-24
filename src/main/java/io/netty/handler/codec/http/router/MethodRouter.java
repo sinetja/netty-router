@@ -2,14 +2,14 @@ package io.netty.handler.codec.http.router;
 
 import io.netty.handler.codec.http.HttpMethod;
 
-public class MethodRouter<T> extends jauter.Router<HttpMethod, T> {
-  protected HttpMethod CONNECT() { return HttpMethod.CONNECT; }
-  protected HttpMethod DELETE()  { return HttpMethod.DELETE ; }
-  protected HttpMethod GET()     { return HttpMethod.GET    ; }
-  protected HttpMethod HEAD()    { return HttpMethod.HEAD   ; }
-  protected HttpMethod OPTIONS() { return HttpMethod.OPTIONS; }
-  protected HttpMethod PATCH()   { return HttpMethod.PATCH  ; }
-  protected HttpMethod POST()    { return HttpMethod.POST   ; }
-  protected HttpMethod PUT()     { return HttpMethod.PUT    ; }
-  protected HttpMethod TRACE()   { return HttpMethod.TRACE  ; }
+public abstract class MethodRouter<T, RouteLike extends MethodRouter<T, RouteLike>> extends jauter.Router<HttpMethod, T, RouteLike> {
+  @Override protected HttpMethod CONNECT() { return HttpMethod.CONNECT; }
+  @Override protected HttpMethod DELETE()  { return HttpMethod.DELETE ; }
+  @Override protected HttpMethod GET()     { return HttpMethod.GET    ; }
+  @Override protected HttpMethod HEAD()    { return HttpMethod.HEAD   ; }
+  @Override protected HttpMethod OPTIONS() { return HttpMethod.OPTIONS; }
+  @Override protected HttpMethod PATCH()   { return HttpMethod.PATCH  ; }
+  @Override protected HttpMethod POST()    { return HttpMethod.POST   ; }
+  @Override protected HttpMethod PUT()     { return HttpMethod.PUT    ; }
+  @Override protected HttpMethod TRACE()   { return HttpMethod.TRACE  ; }
 }

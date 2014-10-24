@@ -51,6 +51,14 @@ the handler class should be annotated with
 Create handler
 ~~~~~~~~~~~~~~
 
+Add ``handler`` to your Netty inbound pipeline, after the HTTP request decoder.
+When a path is matched:
+
+* ``handler`` will create a new instance of the matched handler class, and add it
+  to the pipeline, right after ``handler`` itself. If you use handler instance as
+  ``deleteHandler`` above, ``handler`` doesn't have to create a new instance.
+* ``handler`` will pass a ``Routed`` (see below) to your handler.
+
 ::
 
   import io.netty.handler.codec.http.router.Router;
@@ -64,21 +72,15 @@ Create handler
     private static final Handler handler = new Handler(router);
 
     public void initChannel(SocketChannel ch) {
-      ChannelPipeline p = ch.pipeline();
-      p.addLast(new HttpServerCodec);
-      // Must use router.name() so that the router can add the
-      // routed handler right after itself later
-      p.addLast(handler.name(), handler);
+      ChannelPipeline p = ch.pipeline()
+        .addLast(new HttpServerCodec)
+        // Must use router.name() so that the router can add the
+        // routed handler right after itself later
+        .addLast(handler.name(), handler);
     }
   }
 
-Add ``handler`` to your Netty inbound pipeline, after the HTTP request decoder.
-When a path is matched:
-
-* ``handler`` will create a new instance of the matched handler class, and add it
-  to the pipeline, right after ``handler`` itself. If you use handler instance as
-  ``deleteHandler`` above, ``handler`` doesn't have to create a new instance.
-* ``handler`` will pass a ``Routed`` (see below) to your handler.
+You may also want to add `BadClientSilencer <https://github.com/sinetja/netty-router/tree/master/src/main/java/io/netty/handler/codec/http/router/BadClientSilencer.java>`_.
 
 Routed contains:
 
@@ -203,7 +205,7 @@ Use with Maven
   <dependency>
     <groupId>tv.cntt</groupId>
     <artifactId>netty-router</artifactId>
-    <version>1.6</version>
+    <version>1.7</version>
   </dependency>
 
 Tip:

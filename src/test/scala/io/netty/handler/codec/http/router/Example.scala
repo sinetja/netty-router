@@ -46,12 +46,15 @@ object PipelineInitializer extends ChannelInitializer[SocketChannel] {
     .GET("/",             new RequestHandler)
     .GET("/articles/:id", classOf[RequestHandler])
 
-  private val handler = new Handler(router);
+  private val handler = new Handler(router)
+
+  private val badClientSilencer = new BadClientSilencer
 
   def initChannel(ch: SocketChannel) {
     val p = ch.pipeline
-    p.addLast(new HttpServerCodec)
-    p.addLast(router.name, router)
+      .addLast(new HttpServerCodec)
+      .addLast(handler.name, handler)
+      .addLast(badClientSilencer)
   }
 }
 
@@ -70,6 +73,6 @@ class RequestHandler extends SimpleChannelInboundHandler[Routed] {
     res.headers.set(HttpHeaders.Names.CONTENT_TYPE,   "text/plain")
     res.headers.set(HttpHeaders.Names.CONTENT_LENGTH, res.content.readableBytes)
 
-    Router.keepAliveWriteAndFlush(ctx, routed.request(), res)
+    KeepAliveWrite.flush(ctx, routed.request(), res)
   }
 }
