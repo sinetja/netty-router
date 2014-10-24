@@ -1,20 +1,17 @@
-package io.netty.handler.codec.http
+package io.netty.handler.codec.http.router
 
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.Unpooled
-
-import io.netty.channel.{
-  ChannelHandler,
-  ChannelHandlerContext,
-  ChannelInitializer,
-  ChannelFutureListener,
-  ChannelOption,
-  SimpleChannelInboundHandler
-}
-
+import io.netty.channel.{ChannelHandler, ChannelHandlerContext, ChannelInitializer, ChannelOption, SimpleChannelInboundHandler}
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
+import io.netty.channel.socket.nio.NioServerSocketChannel
+import io.netty.handler.codec.http.DefaultFullHttpResponse
+import io.netty.handler.codec.http.HttpHeaders
+import io.netty.handler.codec.http.HttpResponseStatus
+import io.netty.handler.codec.http.HttpServerCodec
+import io.netty.handler.codec.http.HttpVersion
 
 object ExampleApp {
   def main(args: Array[String]) {
@@ -48,6 +45,8 @@ object PipelineInitializer extends ChannelInitializer[SocketChannel] {
   private val router = (new Router)
     .GET("/",             new RequestHandler)
     .GET("/articles/:id", classOf[RequestHandler])
+
+  private val handler = new Handler(router);
 
   def initChannel(ch: SocketChannel) {
     val p = ch.pipeline

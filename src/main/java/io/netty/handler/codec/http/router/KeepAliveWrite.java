@@ -1,15 +1,16 @@
-package io.netty.handler.codec.http;
+package io.netty.handler.codec.http.router;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponse;
 
-public class Router extends ChainRouter<Router> {
-  //----------------------------------------------------------------------------
-  // Utilities to write.
-
-  public static ChannelFuture keepAliveWriteAndFlush(ChannelHandlerContext ctx, HttpRequest req, HttpResponse res) {
+/** Utilities to write. */
+public class KeepAliveWrite {
+  public static ChannelFuture flush(ChannelHandlerContext ctx, HttpRequest req, HttpResponse res) {
     if (!HttpHeaders.isKeepAlive(req)) {
       return ctx.writeAndFlush(res).addListener(ChannelFutureListener.CLOSE);
     } else {
@@ -18,7 +19,7 @@ public class Router extends ChainRouter<Router> {
     }
   }
 
-  public static ChannelFuture keepAliveWriteAndFlush(Channel ch, HttpRequest req, HttpResponse res) {
+  public static ChannelFuture flush(Channel ch, HttpRequest req, HttpResponse res) {
     if (!HttpHeaders.isKeepAlive(req)) {
       return ch.writeAndFlush(res).addListener(ChannelFutureListener.CLOSE);
     } else {

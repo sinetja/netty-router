@@ -1,12 +1,13 @@
-package io.netty.handler.codec.http;
+package io.netty.handler.codec.http.router;
 
+import io.netty.handler.codec.http.HttpRequest;
 import io.netty.util.ReferenceCounted;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class Routed<T> implements ReferenceCounted {
+public class MethodRouted<T> implements ReferenceCounted {
   private final T                         target;
   private final boolean                   notFound;
   private final HttpRequest               request;
@@ -18,7 +19,7 @@ public class Routed<T> implements ReferenceCounted {
 
   //----------------------------------------------------------------------------
 
-  public Routed(
+  public MethodRouted(
       T                         target,
       boolean                   notFound,
       HttpRequest               request,

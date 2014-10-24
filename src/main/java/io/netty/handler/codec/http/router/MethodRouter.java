@@ -1,4 +1,6 @@
-package io.netty.handler.codec.http;
+package io.netty.handler.codec.http.router;
+
+import io.netty.handler.codec.http.HttpMethod;
 
 public class MethodRouter<T> extends jauter.Router<HttpMethod, T> {
   protected HttpMethod CONNECT() { return HttpMethod.CONNECT; }

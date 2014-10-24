@@ -12,7 +12,7 @@ Create router
 
 ::
 
-  import io.netty.handler.codec.http.Router;
+  import io.netty.handler.codec.http.router.Router;
 
   Router router = new Router()
     .GET      ("/articles",     IndexHandler.class)
@@ -48,38 +48,43 @@ the handler class should be annotated with
   DeleteHandler deleteHandler = new DeleteHandler();
   router.DELETE("/articles/:id", deleteHandler);
 
-Add router to pipeline
-~~~~~~~~~~~~~~~~~~~~~~
-
-Add ``router`` to your Netty inbound pipeline, after the HTTP request decoder.
-When a path is matched:
-
-* ``router`` will create a new instance of the matched handler class, and add it
-  to the pipeline, right after ``router`` itself. If you use handler instance as
-  ``deleteHandler`` above, ``router`` doesn't have to create a new instance.
-* ``router`` will pass a ``Routed`` (see below) to your handler.
+Create handler
+~~~~~~~~~~~~~~
 
 ::
+
+  import io.netty.handler.codec.http.router.Router;
+  import io.netty.handler.codec.http.router.Handler;
 
   public class PipelineInitializer extends ChannelInitializer<SocketChannel> {
     private static final router = new Router()
       .GET("/",             new ExampleHandler())
       .GET("/articles/:id", ExampleHandler.class)
 
+    private static final Handler handler = new Handler(router);
+
     public void initChannel(SocketChannel ch) {
       ChannelPipeline p = ch.pipeline();
       p.addLast(new HttpServerCodec);
       // Must use router.name() so that the router can add the
       // routed handler right after itself later
-      p.addLast(router.name(), router);
+      p.addLast(handler.name(), handler);
     }
   }
+
+Add ``handler`` to your Netty inbound pipeline, after the HTTP request decoder.
+When a path is matched:
+
+* ``handler`` will create a new instance of the matched handler class, and add it
+  to the pipeline, right after ``handler`` itself. If you use handler instance as
+  ``deleteHandler`` above, ``handler`` doesn't have to create a new instance.
+* ``handler`` will pass a ``Routed`` (see below) to your handler.
 
 Routed contains:
 
 ::
 
-  boolean                   notFound404()  // See "404 Not Found handler" below
+  boolean                   notFound()  // See "404 Not Found handler" below
   HttpRequest               request()
   String                    path()
   Map<String, String>       pathParams()
@@ -117,17 +122,17 @@ If you want to pass your own 404 Not Found handler:
 
 ::
 
-  router.handler404(My404Handler.class);
+  router.NOT_FOUND(My404Handler.class);
 
 You know if your handler is called because of 404 Not Found or not, by checking
-``Routed#notFound404()``.
+``Routed#notFound()``.
 
 You can also use instance (your handler must be `sharable <http://netty.io/4.0/api/io/netty/channel/ChannelHandler.Sharable.html>`_):
 
 ::
 
   ChannelInboundHandler my404Handler = new My404Handler();
-  router.handler404(my404Handler);
+  router.NOT_FOUND(my404Handler);
 
 EventExecutorGroup
 ~~~~~~~~~~~~~~~~~~
