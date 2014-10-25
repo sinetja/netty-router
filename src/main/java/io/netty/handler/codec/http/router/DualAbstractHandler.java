@@ -6,10 +6,10 @@ import io.netty.channel.ChannelHandlerContext;
  * Inbound handler that uses router whose targets can be classes or instances of
  * the classes.
  */
-public abstract class DualAbstractHandler extends AbstractHandler<Object, Router> {
+public abstract class DualAbstractHandler<RouteLike extends MethodRouter<Object, RouteLike>> extends AbstractHandler<Object, RouteLike> {
   protected abstract void routed(ChannelHandlerContext ctx, MethodRouted<Object> routed, Object target) throws Exception;
 
-  public DualAbstractHandler(Router router) {
+  public DualAbstractHandler(MethodRouter<Object, RouteLike> router) {
     super(router);
   }
 
