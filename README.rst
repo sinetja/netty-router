@@ -205,7 +205,7 @@ Use with Maven
   <dependency>
     <groupId>tv.cntt</groupId>
     <artifactId>netty-router</artifactId>
-    <version>1.7</version>
+    <version>1.8</version>
   </dependency>
 
 Tip:
