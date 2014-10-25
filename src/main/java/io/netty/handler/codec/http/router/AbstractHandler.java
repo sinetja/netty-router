@@ -19,7 +19,7 @@ import io.netty.handler.codec.http.QueryStringDecoder;
  */
 @ChannelHandler.Sharable
 public abstract class AbstractHandler<T, RouteLike extends MethodRouter<T, RouteLike>> extends SimpleChannelInboundHandler<HttpRequest> {
-  private static final byte[] CONTENT_404 = "404 Not Found".getBytes();
+  private static final byte[] CONTENT_404 = "Not Found".getBytes();
 
   private final MethodRouter<T, RouteLike> router;
 
