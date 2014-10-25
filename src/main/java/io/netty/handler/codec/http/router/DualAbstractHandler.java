@@ -7,7 +7,7 @@ import io.netty.channel.ChannelHandlerContext;
  * the classes.
  */
 public abstract class DualAbstractHandler<RouteLike extends MethodRouter<Object, RouteLike>> extends AbstractHandler<Object, RouteLike> {
-  protected abstract void routed(ChannelHandlerContext ctx, MethodRouted<Object> routed, Object target) throws Exception;
+  protected abstract void routed(ChannelHandlerContext ctx, Routed routed, Object target) throws Exception;
 
   public DualAbstractHandler(MethodRouter<Object, RouteLike> router) {
     super(router);
@@ -26,6 +26,7 @@ public abstract class DualAbstractHandler<RouteLike extends MethodRouter<Object,
       target = objectOrClass;
     }
 
-    routed(ctx, routed, target);
+    Routed routedObj = new Routed(routed.target(), routed.notFound(), routed.request(), routed.path(), routed.pathParams(), routed.queryParams());
+    routed(ctx, routedObj, target);
   }
 }

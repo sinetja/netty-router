@@ -33,14 +33,14 @@ public class Handler extends DualAbstractHandler<Router> {
 
   /**
    * Should be used to add the router to pipeline:
-   * channel.pipeline().addLast(router.name(), router)
+   * channel.pipeline().addLast(handler.name(), handler)
    */
   public String name() {
     return ROUTER_HANDLER_NAME;
   }
 
   @Override
-  protected void routed(ChannelHandlerContext ctx, MethodRouted<Object> routed, Object target) {
+  protected void routed(ChannelHandlerContext ctx, Routed routed, Object target) {
     ChannelInboundHandler handler = (ChannelInboundHandler) target;
 
     // The handler may have been added (keep alive)
@@ -59,6 +59,6 @@ public class Handler extends DualAbstractHandler<Router> {
 
     // Pass to the routed handler
     routed.retain();
-    ctx.fireChannelRead(new Routed(routed.target(), routed.notFound(), routed.request(), routed.path(), routed.pathParams(), routed.queryParams()));
+    ctx.fireChannelRead(routed);
   }
 }
