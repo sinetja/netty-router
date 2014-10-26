@@ -1,11 +1,16 @@
-This tiny Java library is intended for use with Netty 4, to route HTTP requests
-to your Netty handlers.
+Netty-Router is a tiny Java library intended for use with Netty 4, to route HTTP
+requests to your Netty handlers.
 
 See `test <https://github.com/sinetja/netty-router/tree/master/src/test/scala/io/netty/handler/codec/http>`_
 for example.
 
-netty-router is based on `Jauter <https://github.com/sinetja/jauter>`_.
+Netty-Router is based on `Jauter <https://github.com/sinetja/jauter>`_.
 See also `Sinetja <https://github.com/sinetja/sinetja>`_.
+
+Javadoc:
+
+* `Netty-Router <http://sinetja.github.io/netty-router>`_
+* `Netty <http://netty.io/4.0/api/index.html>`_
 
 Create router
 ~~~~~~~~~~~~~
