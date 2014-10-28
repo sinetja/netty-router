@@ -1,32 +1,73 @@
 package io.netty.handler.codec.http.router;
 
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.QueryStringDecoder;
 
 /**
- * Inbound handler that uses router whose targets can be classes or instances of
- * the classes.
+ * This class is designed so that it can also be used in other projects, like
+ * Sinetja.
  */
-public abstract class DualAbstractHandler<RouteLike extends MethodRouter<Object, RouteLike>> extends AbstractHandler<Object, RouteLike> {
-  protected abstract void routed(ChannelHandlerContext ctx, Routed routed, Object target) throws Exception;
+@ChannelHandler.Sharable
+public abstract class DualAbstractHandler<T, RouteLike extends DualMethodRouter<T, RouteLike>> extends SimpleChannelInboundHandler<HttpRequest> {
+  private static final byte[] CONTENT_404 = "Not Found".getBytes();
 
-  public DualAbstractHandler(MethodRouter<Object, RouteLike> router) {
-    super(router);
+  private final DualMethodRouter<T, RouteLike> router;
+
+  public DualAbstractHandler(DualMethodRouter<T, RouteLike> router) {
+    this.router = router;
   }
 
+  public DualMethodRouter<T, RouteLike> router() {
+    return router;
+  }
+
+  //----------------------------------------------------------------------------
+
+  /** @param routed Will automatically be released. Please call routed.retain() if you want. */
+  protected abstract void routed(ChannelHandlerContext ctx, Routed routed) throws Exception;
+
   @Override
-  protected void routed(ChannelHandlerContext ctx, MethodRouted<Object> routed) throws Exception {
-    Object target = null;
-    Object objectOrClass = routed.target();
-    if (objectOrClass instanceof Class) {
-      // Create handler from class
-      Class<?> klass = (Class<?>) objectOrClass;
-      target = klass.newInstance();
-    } else {
-      // Get handler from route target
-      target = objectOrClass;
+  protected void channelRead0(ChannelHandlerContext ctx, HttpRequest req) throws Exception {
+    if (HttpHeaders.is100ContinueExpected(req)) {
+      ctx.writeAndFlush(new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.CONTINUE));
+      return;
     }
 
-    Routed routedObj = new Routed(routed.target(), routed.notFound(), routed.request(), routed.path(), routed.pathParams(), routed.queryParams());
-    routed(ctx, routedObj, target);
+    // Route
+    HttpMethod            method  = req.getMethod();
+    QueryStringDecoder    qsd     = new QueryStringDecoder(req.getUri());
+    jauter.Routed<Object> jrouted = router.route(method, qsd.path());
+
+    if (jrouted == null) {
+      respondNotFound(ctx, req);
+      return;
+    }
+
+    Routed routed = new Routed(jrouted.target(), jrouted.notFound(), req, qsd.path(), jrouted.params(), qsd.parameters());
+    routed(ctx, routed);
+  }
+
+  protected void respondNotFound(ChannelHandlerContext ctx, HttpRequest req) {
+    HttpResponse res = new DefaultFullHttpResponse(
+      HttpVersion.HTTP_1_1,
+      HttpResponseStatus.NOT_FOUND,
+      Unpooled.wrappedBuffer(CONTENT_404)
+    );
+
+    HttpHeaders headers = res.headers();
+    headers.set(HttpHeaders.Names.CONTENT_TYPE,   "text/plain");
+    headers.set(HttpHeaders.Names.CONTENT_LENGTH, CONTENT_404.length);
+
+    KeepAliveWrite.flush(ctx, req, res);
   }
 }

@@ -10,7 +10,7 @@ import io.netty.util.concurrent.EventExecutorGroup;
  * Inbound handler that converts HttpRequest to Routed and passes Routed to the
  * matched handler.
  */
-public class Handler extends DualAbstractHandler<Router> {
+public class Handler extends DualAbstractHandler<ChannelInboundHandler, Router> {
   public static final String ROUTER_HANDLER_NAME = Handler.class.getName() + "_ROUTER_HANDLER";
   public static final String ROUTED_HANDLER_NAME = Handler.class.getName() + "_ROUTED_HANDLER";
 
@@ -40,8 +40,8 @@ public class Handler extends DualAbstractHandler<Router> {
   }
 
   @Override
-  protected void routed(ChannelHandlerContext ctx, Routed routed, Object target) {
-    ChannelInboundHandler handler = (ChannelInboundHandler) target;
+  protected void routed(ChannelHandlerContext ctx, Routed routed) throws Exception {
+    ChannelInboundHandler handler = (ChannelInboundHandler) routed.instanceFromTarget();
 
     // The handler may have been added (keep alive)
     ChannelPipeline pipeline     = ctx.pipeline();
