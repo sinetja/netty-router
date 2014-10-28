@@ -2,7 +2,7 @@ organization := "tv.cntt"
 
 name         := "netty-router"
 
-version      := "1.9-SNAPSHOT"
+version      := "1.10-SNAPSHOT"
 
 //------------------------------------------------------------------------------
 
@@ -19,6 +19,6 @@ javacOptions in (Compile, doc) := Seq("-source", "1.5")
 
 //------------------------------------------------------------------------------
 
-libraryDependencies += "tv.cntt" % "jauter" % "1.6"
+libraryDependencies += "tv.cntt" % "jauter" % "1.7"
 
 libraryDependencies += "io.netty" % "netty-all" % "4.0.23.Final" % "provided"

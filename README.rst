@@ -129,7 +129,7 @@ If you want to pass your own 404 Not Found handler:
 
 ::
 
-  router.NOT_FOUND(My404Handler.class);
+  router.notFound(My404Handler.class);
 
 You know if your handler is called because of 404 Not Found or not, by checking
 ``Routed#notFound()``.
@@ -139,7 +139,7 @@ You can also use instance (your handler must be `sharable <http://netty.io/4.0/a
 ::
 
   ChannelInboundHandler my404Handler = new My404Handler();
-  router.NOT_FOUND(my404Handler);
+  router.notFound(my404Handler);
 
 EventExecutorGroup
 ~~~~~~~~~~~~~~~~~~
@@ -210,7 +210,7 @@ Use with Maven
   <dependency>
     <groupId>tv.cntt</groupId>
     <artifactId>netty-router</artifactId>
-    <version>1.9</version>
+    <version>1.10</version>
   </dependency>
 
 Tip:
