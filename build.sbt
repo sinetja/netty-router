@@ -13,9 +13,10 @@ autoScalaLibrary := false
 // Do not append Scala versions to the generated artifacts
 crossPaths := false
 
-javacOptions in (Compile) ++= Seq("-source", "1.5", "-target", "1.5", "-Xlint:deprecation")
+// Netty 4+ requires Java 6
+javacOptions in (Compile) ++= Seq("-source", "1.6", "-target", "1.6", "-Xlint:deprecation")
 
-javacOptions in (Compile, doc) := Seq("-source", "1.5")
+javacOptions in (Compile, doc) := Seq("-source", "1.6")
 
 //------------------------------------------------------------------------------
 
