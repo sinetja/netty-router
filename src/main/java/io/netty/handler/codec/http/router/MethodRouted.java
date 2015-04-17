@@ -120,4 +120,16 @@ public class MethodRouted<T> implements ReferenceCounted {
     if (requestAsReferenceCounted != null) requestAsReferenceCounted.retain(arg0);
     return this;
   }
+
+  @Override
+  public ReferenceCounted touch() {
+    if (requestAsReferenceCounted != null) requestAsReferenceCounted.touch();
+    return this;
+  }
+
+  @Override
+  public ReferenceCounted touch(final Object hint) {
+    if (requestAsReferenceCounted != null) requestAsReferenceCounted.touch(hint);
+    return this;
+  }
 }

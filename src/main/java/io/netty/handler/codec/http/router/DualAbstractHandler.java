@@ -5,6 +5,8 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderUtil;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
@@ -38,14 +40,14 @@ public abstract class DualAbstractHandler<T, RouteLike extends DualMethodRouter<
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, HttpRequest req) throws Exception {
-    if (HttpHeaders.is100ContinueExpected(req)) {
+    if (HttpHeaderUtil.is100ContinueExpected(req)) {
       ctx.writeAndFlush(new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.CONTINUE));
       return;
     }
 
     // Route
-    HttpMethod            method  = req.getMethod();
-    QueryStringDecoder    qsd     = new QueryStringDecoder(req.getUri());
+    HttpMethod method = req.method();
+    QueryStringDecoder qsd = new QueryStringDecoder(req.uri());
     jauter.Routed<Object> jrouted = router.route(method, qsd.path());
 
     if (jrouted == null) {
@@ -59,14 +61,14 @@ public abstract class DualAbstractHandler<T, RouteLike extends DualMethodRouter<
 
   protected void respondNotFound(ChannelHandlerContext ctx, HttpRequest req) {
     HttpResponse res = new DefaultFullHttpResponse(
-      HttpVersion.HTTP_1_1,
-      HttpResponseStatus.NOT_FOUND,
-      Unpooled.wrappedBuffer(CONTENT_404)
+            HttpVersion.HTTP_1_1,
+            HttpResponseStatus.NOT_FOUND,
+            Unpooled.wrappedBuffer(CONTENT_404)
     );
 
     HttpHeaders headers = res.headers();
-    headers.set(HttpHeaders.Names.CONTENT_TYPE,   "text/plain");
-    headers.set(HttpHeaders.Names.CONTENT_LENGTH, CONTENT_404.length);
+    headers.set(HttpHeaderNames.CONTENT_TYPE, "text/plain");
+    HttpHeaderUtil.setContentLength(res, CONTENT_404.length);
 
     KeepAliveWrite.flush(ctx, req, res);
   }

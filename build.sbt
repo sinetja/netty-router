@@ -22,4 +22,4 @@ javacOptions in (Compile, doc) := Seq("-source", "1.6")
 
 libraryDependencies += "tv.cntt" % "jauter" % "1.7"
 
-libraryDependencies += "io.netty" % "netty-all" % "4.0.24.Final" % "provided"
+libraryDependencies += "io.netty" % "netty-all" % "4.1.0.Beta4" % "provided"
