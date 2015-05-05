@@ -214,7 +214,7 @@ Use with Maven
   </dependency>
 
 Tip:
-In your Netty project, you should also add `Javassist <http://javassist.org/>`_,
+In your Netty project, you should also add `Javassist <http://www.csg.ci.i.u-tokyo.ac.jp/~chiba/javassist/>`_,
 it boosts Netty speed.
 
 ::
@@ -222,5 +222,5 @@ it boosts Netty speed.
   <dependency>
     <groupId>org.javassist</groupId>
     <artifactId>javassist</artifactId>
-    <version>3.18.2-GA</version>
+    <version>3.19.0-GA</version>
   </dependency>
