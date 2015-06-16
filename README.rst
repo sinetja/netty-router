@@ -194,9 +194,9 @@ path.
 
   IndexHandler cachedInstance = new IndexHandler();
 
-  Router router = new Router<Object>()
-    .pattern("/articles",     cachedInstance)
-    .pattern("/articles/:id", ShowHandler.class);
+  Router router = new Router()
+    .GET("/articles",     cachedInstance)
+    .GET("/articles/:id", ShowHandler.class);
 
   // These are the same:
   router.path(cachedInstance);
