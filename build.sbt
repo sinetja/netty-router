@@ -1,13 +1,10 @@
 organization := "tv.cntt"
-
 name         := "netty-router"
-
-version      := "1.10-SNAPSHOT"
+version      := "2.0.0-SNAPSHOT"
 
 //------------------------------------------------------------------------------
 
-scalaVersion := "2.11.2"
-
+// This project does not use Scala
 autoScalaLibrary := false
 
 // Do not append Scala versions to the generated artifacts
@@ -20,6 +17,5 @@ javacOptions in (Compile, doc) := Seq("-source", "1.6")
 
 //------------------------------------------------------------------------------
 
-libraryDependencies += "tv.cntt" % "jauter" % "1.7"
-
-libraryDependencies += "io.netty" % "netty-all" % "4.0.24.Final" % "provided"
+libraryDependencies += "io.netty" % "netty-all" % "4.0.31.Final" % "provided"
+libraryDependencies += "junit"    % "junit"     % "4.2"          % "test"
