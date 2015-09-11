@@ -40,27 +40,33 @@ import java.util.Set;
  * Route targets can be any type. In the below example, targets are classes:
  *
  * <pre>
- * Router&lt;Class&gt; router = new Router&lt;Class&gt;()
+ * {@code
+ * Router<Class> router = new Router<Class>;()
  *   .GET      ("/articles",     IndexHandler.class)
  *   .GET      ("/articles/:id", ShowHandler.class)
  *   .POST     ("/articles",     CreateHandler.class)
  *   .GET      ("/download/:*",  DownloadHandler.class)  // ":*" must be the last token
  *   .GET_FIRST("/articles/new", NewHandler.class);      // This will be matched first
+ * }
  * </pre>
  *
  * Slashes at both ends are ignored. These are the same:
  *
  * <pre>
+ * {@code
  * router.GET("articles",   IndexHandler.class);
  * router.GET("/articles",  IndexHandler.class);
  * router.GET("/articles/", IndexHandler.class);
+ * }
  * </pre>
  *
  * You can remove routes by target or by path:
  *
  * <pre>
+ * {@code
  * router.removeTarget(IndexHandler.class);
  * router.removePath("/articles");
+ * }
  * </pre>
  *
  * <h3>Match with request method and URI</h3>
@@ -84,32 +90,40 @@ import java.util.Set;
  * Use {@link #path(HttpMethod, Object, Object...)} or {@link #path(Object, Object...)}:
  *
  * <pre>
+ * {@code
  * router.path(HttpMethod.GET, IndexHandler.class);
  * // Returns "/articles"
+ * }
  * </pre>
  *
  * You can skip HTTP method if there's no confusion:
  *
  * <pre>
+ * {@code
  * router.path(CreateHandler.class);
  * // Also returns "/articles"
+ * }
  * </pre>
  *
  * You can specify params as map:
  *
  * <pre>
+ * {@code
  * // Things in params will be converted to String
  * Map<Object, Object> params = new HashMap<Object, Object>();
  * params.put("id", 123);
  * router.path(ShowHandler.class, params);
  * // Returns "/articles/123"
+ * }
  * </pre>
  *
  * Convenient way to specify params:
  *
  * <pre>
+ * {@code
  * router.path(ShowHandler.class, "id", 123);
  * // Returns "/articles/123"
+ * }
  * </pre>
  *
  * <h3>Allowed methods</h3>
