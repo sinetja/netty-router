@@ -41,7 +41,7 @@ import java.util.Set;
  *
  * <pre>
  * {@code
- * Router<Class> router = new Router<Class>;()
+ * Router<Class> router = new Router<Class>()
  *   .GET      ("/articles",     IndexHandler.class)
  *   .GET      ("/articles/:id", ShowHandler.class)
  *   .POST     ("/articles",     CreateHandler.class)
