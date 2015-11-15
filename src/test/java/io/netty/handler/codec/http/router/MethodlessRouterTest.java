@@ -28,6 +28,10 @@ public class MethodlessRouterTest {
     private PatternRoutingMatcher routerInstance;
 
     /**
+     * /
+     */
+    private final UnitCase mockRootPath = new UnitCase("/");
+    /**
      * /standard/bankai/path
      */
     private final UnitCase mockStandardBankaiPath = new UnitCase("/standard/bankai/path");
@@ -56,12 +60,13 @@ public class MethodlessRouterTest {
     }
 
     @Before
-    public void setUp() throws InvalidPathException {
+    public void setUp() {
         this.routerInstance = new PatternRoutingMatcher();
         this.routerInstance.addLast(this.mockStandardBankaiPath.getPatternPath(), this.mockStandardBankaiPath);
         this.routerInstance.addLast(this.mockOvermatchBankaiPath.getPatternPath(), this.mockOvermatchBankaiPath);
         this.routerInstance.addLast(this.mockOneParamBankaiPath.getPatternPath(), this.mockOneParamBankaiPath);
         this.routerInstance.addLast(this.mockTwoParamBankaiPath.getPatternPath(), this.mockTwoParamBankaiPath);
+        this.routerInstance.addLast(this.mockRootPath.getPatternPath(), this.mockRootPath);
     }
 
     @After
@@ -169,9 +174,10 @@ public class MethodlessRouterTest {
      * Test of match method, of class PatternRoutingMatcher.
      */
     @Test
-    public void testRoute() {
-        System.out.println("route");
+    public void testMatch() {
+        System.out.println("match");
         // EXPECT TRUE============================
+        assertSame(this.mockRootPath, this.routerInstance.match("/").getTarget());
         assertSame(this.mockStandardBankaiPath, this.routerInstance.match("/standard/bankai/path").getTarget());
         assertSame(this.mockOvermatchBankaiPath, this.routerInstance.match("/standard/bankai/path/over/match").getTarget());
         assertSame(this.mockOneParamBankaiPath, this.routerInstance.match("/standard/value1/bankai/path").getTarget());

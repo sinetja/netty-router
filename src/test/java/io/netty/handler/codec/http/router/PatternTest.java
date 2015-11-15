@@ -44,7 +44,7 @@ public class PatternTest {
     public void setUp() {
         try {
             instance = new Pattern(this.path, this.target);
-        } catch (InvalidPathException ex) {
+        } catch (Exception ex) {
             Logger.getLogger(PatternTest.class.getName()).log(Level.SEVERE, null, ex);
             fail(ex.getMessage());
         }
