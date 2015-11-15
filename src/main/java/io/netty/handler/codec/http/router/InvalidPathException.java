@@ -14,7 +14,7 @@ import java.text.MessageFormat;
  *
  * @author Richard Lea <chigix@zoho.com>
  */
-public class InvalidPathException extends Exception {
+public class InvalidPathException extends RuntimeException {
 
     private final String path;
 
@@ -28,6 +28,10 @@ public class InvalidPathException extends Exception {
 
     public InvalidReason getReason() {
         return reason;
+    }
+
+    public String getPath() {
+        return path;
     }
 
     public enum InvalidReason {

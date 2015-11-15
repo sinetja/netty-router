@@ -12,6 +12,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -114,11 +115,7 @@ public class PatternRoutingMatcher<T> {
      */
     public PatternRoutingMatcher remove(String path) {
         final String normalized_path;
-        try {
-            normalized_path = RouterUtil.normalizePath(path);
-        } catch (InvalidPathException ex) {
-            return this;
-        }
+        normalized_path = RouterUtil.normalizePath(path);
         this.removePatternByPath(this.patterns, normalized_path);
         for (Map.Entry<T, List<Pattern<T>>> targetEnry : this.reverse.entrySet()) {
             this.removePatternByPath(targetEnry.getValue(), path);
@@ -161,7 +158,9 @@ public class PatternRoutingMatcher<T> {
             boolean matched;
             String[] iteration_pattern_tokens = pattern.getTokens();
             // ===================initialization for this iteration
-            if (tokens_from_path.length == iteration_pattern_tokens.length) {
+            if (tokens_from_path.length == 0 && iteration_pattern_tokens.length == 0) {
+                matched = true;
+            } else if (tokens_from_path.length == iteration_pattern_tokens.length) {
                 matched = false;
                 for (int i = 0; i < iteration_pattern_tokens.length; i++) {
                     String token_from_path = tokens_from_path[i];
@@ -300,11 +299,7 @@ public class PatternRoutingMatcher<T> {
                 }
             }
             final StringBuilder sb;
-            try {
-                sb = new StringBuilder(RouterUtil.normalizePath(path_string_builder.toString()));
-            } catch (InvalidPathException ex) {
-                throw new RuntimeException(ex);
-            }
+            sb = new StringBuilder(RouterUtil.normalizePath(path_string_builder.toString()));
             if (matched) {
                 final int numQueryParams = params.size() - usedKeys.size();
                 if (numQueryParams < minQueryParams) {

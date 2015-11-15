@@ -8,25 +8,23 @@
  */
 package io.netty.handler.codec.http.router;
 
+import java.text.MessageFormat;
+
 /**
  *
  * @author Richard Lea <chigix@zoho.com>
  */
 public class NotFoundException extends Exception {
 
-    public NotFoundException(String message, Throwable cause) {
-        super(message, cause);
+    private final String errorPath;
+
+    public NotFoundException(String path) {
+        super(MessageFormat.format("Unknown path: {0}", path));
+        this.errorPath = path;
     }
 
-    public NotFoundException(Throwable cause) {
-        super(cause);
-    }
-
-    public NotFoundException(String message) {
-        super(message);
-    }
-
-    public NotFoundException() {
+    public String getErrorPath() {
+        return errorPath;
     }
 
 }

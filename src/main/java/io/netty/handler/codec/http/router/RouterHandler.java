@@ -82,7 +82,7 @@ public class RouterHandler extends SimpleChannelInboundHandler<HttpRequest> {
         final QueryStringDecoder qsd = new QueryStringDecoder(msg.uri());
         final Routed<ChannelHandler> routed = this.router.route(msg.method(), qsd.path());
         if (routed == null) {
-            throw new NotFoundException();
+            throw new NotFoundException(qsd.path());
         }
         this.channelForward(ctx, routed.getTarget(), new HttpHandlerRouted(routed, msg));
     }
