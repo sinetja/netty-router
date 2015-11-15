@@ -29,7 +29,7 @@ RouterHandler routerHandler = new RouterHandler(router);
 routerHandler.takePipeline(channel.pipeline());
 ```
 
-# Patter definition
+# Pattern definition
 
 In netty-router, A PATTERN is descibing both of path information and target ChannelHandler to execute.
 
@@ -63,3 +63,8 @@ routerHandler.setLogger(new Logging(){
 In netty-router 3, the `exceptionHandler` is provided for process every error occured during the Netty Server working, commonly the exceptions thrown after routed.
 
 In this library, a preset `DefaultHttpExceptionHandler` could also be accessed and override directly for customizing user exception processing codes.
+
+# TODO
+
+* Router list Print support.
+* Router Switcher of Pipeline support for multiple handler chaining routed.

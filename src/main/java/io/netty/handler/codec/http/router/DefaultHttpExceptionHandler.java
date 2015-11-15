@@ -31,7 +31,7 @@ public class DefaultHttpExceptionHandler extends SimpleChannelInboundHandler<Rou
 
     @Override
     protected void messageReceived(ChannelHandlerContext ctx, RouterHandler.WrappedException exc) throws Exception {
-        this.error(exc);
+        this.error(exc.getMessage(), exc);
         FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, Unpooled.copiedBuffer("Failure: " + HttpResponseStatus.INTERNAL_SERVER_ERROR.toString() + "\r\n", CharsetUtil.UTF_8));
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
