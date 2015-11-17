@@ -62,15 +62,15 @@ public class HttpRouter<T> {
         return this;
     }
 
-    private final PatternRoutingMatcher connectRouter = new PatternRoutingMatcher();
-    private final PatternRoutingMatcher deleteRouter = new PatternRoutingMatcher();
-    private final PatternRoutingMatcher getRouter = new PatternRoutingMatcher();
-    private final PatternRoutingMatcher headRouter = new PatternRoutingMatcher();
-    private final PatternRoutingMatcher optionsRouter = new PatternRoutingMatcher();
-    private final PatternRoutingMatcher patchRouter = new PatternRoutingMatcher();
-    private final PatternRoutingMatcher postRouter = new PatternRoutingMatcher();
-    private final PatternRoutingMatcher putRouter = new PatternRoutingMatcher();
-    private final PatternRoutingMatcher traceRouter = new PatternRoutingMatcher();
+    private final PatternRoutingMatcher<T> connectRouter = new PatternRoutingMatcher<T>();
+    private final PatternRoutingMatcher<T> deleteRouter = new PatternRoutingMatcher<T>();
+    private final PatternRoutingMatcher<T> getRouter = new PatternRoutingMatcher<T>();
+    private final PatternRoutingMatcher<T> headRouter = new PatternRoutingMatcher<T>();
+    private final PatternRoutingMatcher<T> optionsRouter = new PatternRoutingMatcher<T>();
+    private final PatternRoutingMatcher<T> patchRouter = new PatternRoutingMatcher<T>();
+    private final PatternRoutingMatcher<T> postRouter = new PatternRoutingMatcher<T>();
+    private final PatternRoutingMatcher<T> putRouter = new PatternRoutingMatcher<T>();
+    private final PatternRoutingMatcher<T> traceRouter = new PatternRoutingMatcher<T>();
 
     /**
      *
