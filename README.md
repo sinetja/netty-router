@@ -68,3 +68,4 @@ In this library, a preset `DefaultHttpExceptionHandler` could also be accessed a
 
 * Router list Print support.
 * Router Switcher of Pipeline support for multiple handler chaining routed.
+* Complete the Default Error Html Page for the Exception Caught.
