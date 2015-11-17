@@ -18,6 +18,7 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.CharsetUtil;
+import java.text.MessageFormat;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -31,7 +32,7 @@ public class DefaultHttpExceptionHandler extends SimpleChannelInboundHandler<Rou
 
     @Override
     protected void messageReceived(ChannelHandlerContext ctx, RouterHandler.WrappedException exc) throws Exception {
-        this.error(exc.getMessage(), exc);
+        this.error(MessageFormat.format("EXCEPTIONCAUGHT: [{1}] {0}", exc.getCause().getMessage(), exc.getSource().getClass().getName()), exc.getCause());
         FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, Unpooled.copiedBuffer("Failure: " + HttpResponseStatus.INTERNAL_SERVER_ERROR.toString() + "\r\n", CharsetUtil.UTF_8));
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
