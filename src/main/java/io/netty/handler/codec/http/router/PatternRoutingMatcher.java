@@ -258,8 +258,8 @@ public class PatternRoutingMatcher<T> {
      * matching the pattern linked to the given target.
      *
      * @param target
-     * @param params A key-value mapping is to find the pattern with the same
-     * name defined as keys.
+     * @param params A name/value pair where the name are of equivalence to the
+     * key defined in the pattern.
      * @return Returns {@code null} if there is no {@link Pattern} matched in
      * this router. In addtion, the pattern with ":*" would also not be matched
      * in any cases.
