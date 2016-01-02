@@ -90,7 +90,7 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    public void exceptionCaught(final ChannelHandlerContext ctx, Throwable cause) throws Exception {
         //this.pipelineForward(this.exceptionPipeline, new WrappedException(this.activeRouted.get(ctx.channel()).getMessage(), this.activeRouted.get(ctx.channel()).getRouting(), cause));
         //this.activeRouted.remove(ctx.channel());
         LOG.debug("EXCEPTION CAUGHT:[RouterHandler]");
@@ -98,8 +98,19 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
         if (exc.unwrapException() instanceof HttpException) {
             super.exceptionForward(exc.unwrapException());
         } else {
+            super.exceptionForward(new HttpException(exc.unwrapException()) {
+
+                @Override
+                public HttpRequest getHttpRequest() {
+                    return activeRouted.get(ctx.channel()).getMessage();
+                }
+
+                @Override
+                public Routing getMatchedRouting() {
+                    return matcherIndex.ROUTING_IDENTITIES.get(exc.getRoutingName());
+                }
+            });
         }
-        super.exceptionCaught(ctx, cause);
     }
 
     @Override
