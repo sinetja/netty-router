@@ -16,29 +16,31 @@ import java.util.Map;
  *
  * @author Richard Lea <chigix@zoho.com>
  */
-public class HttpHandlerRouted implements Routed<ChannelHandler> {
+public class HttpRouted {
 
-    private final Routed<ChannelHandler> routed;
+    private final RoutingPathMatched pathMatched;
 
     private final HttpRequest requestMsg;
 
-    public HttpHandlerRouted(Routed<ChannelHandler> routed, HttpRequest request) {
-        this.routed = routed;
+    public HttpRouted(RoutingPathMatched matched, HttpRequest request) {
+        this.pathMatched = matched;
         this.requestMsg = request;
     }
 
-    @Override
-    public ChannelHandler getTarget() {
-        return this.routed.getTarget();
-    }
-
-    @Override
     public Map<String, Object> decodedParams() {
-        return this.routed.decodedParams();
+        return this.pathMatched.decodedParams();
     }
 
     public HttpRequest getRequestMsg() {
         return requestMsg;
+    }
+
+    public RoutingConfig unwrapRoutingConf() {
+        return this.pathMatched.getRouting().unwrap();
+    }
+
+    public String getPatternName() {
+        return this.pathMatched.getRouting().getName();
     }
 
 }

@@ -18,40 +18,23 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.CharsetUtil;
-import java.text.MessageFormat;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import io.netty.util.internal.logging.InternalLogger;
+import io.netty.util.internal.logging.InternalLoggerFactory;
 
 /**
  *
  * @author Richard Lea <chigix@zoho.com>
  */
-public class DefaultHttpExceptionHandler extends SimpleChannelInboundHandler<RouterHandler.WrappedException> {
+public class DefaultHttpExceptionHandler extends SimpleChannelInboundHandler<HttpException> {
 
-    private static final Logger LOG = Logger.getLogger(DefaultHttpExceptionHandler.class.getName());
+    private static final InternalLogger LOG = InternalLoggerFactory.getInstance(DefaultHttpExceptionHandler.class);
 
     @Override
-    protected void messageReceived(ChannelHandlerContext ctx, RouterHandler.WrappedException exc) throws Exception {
-        this.error(MessageFormat.format("EXCEPTIONCAUGHT: [{1}] {0}", exc.getCause().getMessage(), exc.getSource().getClass().getName()), exc.getCause());
+    protected void messageReceived(ChannelHandlerContext ctx, HttpException msg) throws Exception {
+        //this.error(MessageFormat.format("EXCEPTIONCAUGHT: [{1}] {0}", exc.getCause().getMessage(), exc.getSource().getClass().getName()), exc.getCause());
         FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, Unpooled.copiedBuffer("Failure: " + HttpResponseStatus.INTERNAL_SERVER_ERROR.toString() + "\r\n", CharsetUtil.UTF_8));
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
-    }
-
-    protected void info(String msg) {
-        LOG.info(msg);
-    }
-
-    protected void warn(String msg) {
-        LOG.warning(msg);
-    }
-
-    protected void error(Throwable cause) {
-        LOG.log(Level.SEVERE, null, cause);
-    }
-
-    protected void error(String msg, Throwable cause) {
-        LOG.log(Level.SEVERE, msg, cause);
     }
 
 }

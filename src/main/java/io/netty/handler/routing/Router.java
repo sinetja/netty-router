@@ -1,0 +1,151 @@
+/*
+ * This file is part of the netty-router package.
+ * 
+ * (c) Richard Lea <chigix@zoho.com>
+ * 
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+package io.netty.handler.routing;
+
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerAdapter;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelHandlerInvokerUtil;
+import io.netty.channel.ChannelPipeline;
+import io.netty.util.ReferenceCountUtil;
+import io.netty.util.internal.logging.InternalLogger;
+import io.netty.util.internal.logging.InternalLoggerFactory;
+import java.text.MessageFormat;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ *
+ * @author Richard Lea <chigix@zoho.com>
+ */
+public abstract class Router extends ChannelHandlerAdapter {
+
+    private static final InternalLogger LOG = InternalLoggerFactory.getInstance(Router.class);
+
+    private final AtomicInteger nullNameRoutingCount = new AtomicInteger();
+
+    private final Map<String, ChannelPipeline> routingPipelines = new ConcurrentHashMap<String, ChannelPipeline>();
+
+    private final ConcurrentMap<Channel, RoutingPipeline> activePipeline = new ConcurrentHashMap<Channel, RoutingPipeline>();
+
+    private RoutingPipeline exceptionPipeline;
+
+    @Override
+    public final void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        LOG.debug(msg.toString());
+        try {
+            this.route(ctx, msg, routingPipelines);
+        } finally {
+            ReferenceCountUtil.release(msg);
+        }
+    }
+
+    @Override
+    public final void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+        LOG.debug("BANKAI");
+        this.exceptionPipeline = (RoutingPipeline) this.newRouting(ctx);
+        this.initExceptionRouting(exceptionPipeline);
+        this.initRouter(ctx);
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        this.pipelineForward(this.exceptionPipeline, cause);
+    }
+
+    /**
+     * The util for create {@link RoutingPipeline} in router. If the router
+     * previously contained a routing for the name, the old routing is replaced
+     * by the new created routing.
+     *
+     * @param ctx
+     * @param name The name of the routing to create. {@code null} to let the
+     * name auto-generated.
+     * @return
+     */
+    protected final ChannelPipeline newRouting(ChannelHandlerContext ctx, String name) {
+        if (name == null) {
+            name = "Routing-" + this.nullNameRoutingCount.incrementAndGet();
+        }
+        RoutingPipeline pipeline = new RoutingPipeline(ctx, name);
+        ctx.pipeline().addLast(pipeline.getStart().getAnchorName(), pipeline.getStart());
+        ctx.pipeline().addAfter(pipeline.getStart().getAnchorName(), pipeline.getEnd().getAnchorName(), pipeline.getEnd());
+        this.routingPipelines.put(name, pipeline);
+        return pipeline;
+    }
+
+    protected final ChannelPipeline newRouting(ChannelHandlerContext ctx) {
+        return this.newRouting(ctx, null);
+    }
+
+    /**
+     * Forward a message to a specified routing pipeline directly.
+     *
+     * @param pipeline The pipeline to be the where forwarding.
+     * @param msg The message to be forwarded.
+     */
+    protected final void pipelineForward(ChannelPipeline pipeline, Object msg) {
+        try {
+            LOG.debug(MessageFormat.format("START: {0}", ((RoutingPipeline) pipeline).getStart().getAnchorName()));
+            LOG.debug(MessageFormat.format("CONTEXT: {0}", ((RoutingPipeline) pipeline).getStart().getContext()));
+            LOG.debug(MessageFormat.format("CONTEXT: {0}", pipeline.channel().pipeline().context(((RoutingPipeline) pipeline).getStart())));
+            ChannelHandlerInvokerUtil.invokeChannelReadNow(((RoutingPipeline) pipeline).getStart().getContext(), msg);
+        } catch (NullPointerException e) {
+            if (pipeline == null) {
+                throw new NullPointerException("Null Pipeline was not allowed to forward.");
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    protected final void exceptionForward(Throwable exc) {
+        this.pipelineForward(this.exceptionPipeline, exc);
+    }
+
+    /**
+     * Replace the current acitve pipeline. The getter for activePipeline is not
+     * provided from this {@link Router} for suggesting users maintainance on
+     * old activepipeline.
+     *
+     * @param ctx
+     * @param old The Old activePipeline.
+     * @param neww The new Pipeline to set as current active pipeline.
+     * @return
+     */
+    protected final boolean replaceActivePipeline(ChannelHandlerContext ctx, ChannelPipeline old, ChannelPipeline neww) {
+        return this.activePipeline.replace(ctx.channel(), (RoutingPipeline) old, (RoutingPipeline) neww);
+    }
+
+    /**
+     * Route this msg to an routingPipeline.
+     *
+     * @param ctx The {@link ChannelHandlerContext} which this {@link Router}
+     * belongs to.
+     * @param msg The message to be routed to another sub pipeline.
+     * @param routingPipelines
+     * @throws Exception
+     */
+    protected abstract void route(ChannelHandlerContext ctx, Object msg, Map<String, ChannelPipeline> routingPipelines) throws Exception;
+
+    protected abstract void initExceptionRouting(ChannelPipeline pipeline);
+
+    /**
+     * The Handler Added is not allowed to be used in Router, and initRouter is
+     * the interface instead.
+     *
+     * @param ctx
+     * @throws Exception
+     */
+    protected void initRouter(ChannelHandlerContext ctx) throws Exception {
+    }
+
+}

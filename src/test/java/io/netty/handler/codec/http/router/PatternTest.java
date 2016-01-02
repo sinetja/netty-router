@@ -23,7 +23,7 @@ import static org.junit.Assert.*;
  */
 public class PatternTest {
 
-    private Pattern instance;
+    private RoutingConfig instance;
 
     private String path = "/bankai";
 
@@ -43,7 +43,7 @@ public class PatternTest {
     @Before
     public void setUp() {
         try {
-            instance = new Pattern(this.path, this.target);
+            instance = new RoutingConfig(this.path, this.target);
         } catch (Exception ex) {
             Logger.getLogger(PatternTest.class.getName()).log(Level.SEVERE, null, ex);
             fail(ex.getMessage());
@@ -55,7 +55,7 @@ public class PatternTest {
     }
 
     /**
-     * Test of getPath method, of class Pattern.
+     * Test of getPath method, of class RoutingConfig.
      */
     @Test
     public void testGetPath() {
@@ -64,7 +64,7 @@ public class PatternTest {
     }
 
     /**
-     * Test of getTokens method, of class Pattern.
+     * Test of getTokens method, of class RoutingConfig.
      */
     @Test
     public void testGetTokens() {
@@ -73,7 +73,7 @@ public class PatternTest {
     }
 
     /**
-     * Test of getTarget method, of class Pattern.
+     * Test of getTarget method, of class RoutingConfig.
      */
     @Test
     public void testGetTarget() {

@@ -13,30 +13,23 @@ import java.util.Map;
 /**
  *
  * @author Richard Lea <chigix@zoho.com>
- * @param <T>
  */
-public class PatternRouted<T> implements Routed<T> {
+class RoutingPathMatched {
 
-    private final Pattern<T> pattern;
+    private final Routing routing;
     private final Map params;
 
-    public PatternRouted(Pattern<T> pattern, Map params) {
-        this.pattern = pattern;
+    public RoutingPathMatched(Routing routing, Map params) {
+        this.routing = routing;
         this.params = params;
     }
 
-    @Override
-    public T getTarget() {
-        return this.pattern.getTarget();
+    public Routing getRouting() {
+        return routing;
     }
 
-    @Override
     public Map<String, Object> decodedParams() {
         return this.params;
-    }
-
-    public Pattern<T> getPattern() {
-        return pattern;
     }
 
 }

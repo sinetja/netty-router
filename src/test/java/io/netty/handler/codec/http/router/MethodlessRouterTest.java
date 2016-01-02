@@ -25,7 +25,7 @@ import java.util.Map;
  */
 public class MethodlessRouterTest {
 
-    private PatternRoutingMatcher routerInstance;
+    private RoutingPathMatcher routerInstance;
 
     /**
      * /
@@ -61,7 +61,7 @@ public class MethodlessRouterTest {
 
     @Before
     public void setUp() {
-        this.routerInstance = new PatternRoutingMatcher();
+        this.routerInstance = new RoutingPathMatcher();
         this.routerInstance.addLast(this.mockStandardBankaiPath.getPatternPath(), this.mockStandardBankaiPath);
         this.routerInstance.addLast(this.mockOvermatchBankaiPath.getPatternPath(), this.mockOvermatchBankaiPath);
         this.routerInstance.addLast(this.mockOneParamBankaiPath.getPatternPath(), this.mockOneParamBankaiPath);
@@ -74,22 +74,22 @@ public class MethodlessRouterTest {
     }
 
     /**
-     * Test of addFirst method, of class PatternRoutingMatcher.
+     * Test of addFirst method, of class RoutingPathMatcher.
      */
     @Test
     public void testAddFirst_Pattern() {
         System.out.println("addFirst");
-        Pattern pattern = null;
-        PatternRoutingMatcher instance = new PatternRoutingMatcher();
-        PatternRoutingMatcher expResult = null;
-        PatternRoutingMatcher result = instance.addFirst(pattern);
+        RoutingConfig pattern = null;
+        RoutingPathMatcher instance = new RoutingPathMatcher();
+        RoutingPathMatcher expResult = null;
+        RoutingPathMatcher result = instance.addFirst(pattern);
         assertEquals(expResult, result);
         // TODO review the generated test code and remove the default call to fail.
         fail("The test case is a prototype.");
     }
 
     /**
-     * Test of addFirst method, of class PatternRoutingMatcher.
+     * Test of addFirst method, of class RoutingPathMatcher.
      *
      * @throws java.lang.Exception
      */
@@ -98,24 +98,24 @@ public class MethodlessRouterTest {
         System.out.println("addFirst");
         String path = "";
         ChannelHandler target = null;
-        PatternRoutingMatcher instance = new PatternRoutingMatcher();
-        PatternRoutingMatcher expResult = null;
-        PatternRoutingMatcher result = instance.addFirst(path, target);
+        RoutingPathMatcher instance = new RoutingPathMatcher();
+        RoutingPathMatcher expResult = null;
+        RoutingPathMatcher result = instance.addFirst(path, target);
         assertEquals(expResult, result);
         // TODO review the generated test code and remove the default call to fail.
         fail("The test case is a prototype.");
     }
 
     /**
-     * Test of addLast method, of class PatternRoutingMatcher.
+     * Test of add method, of class RoutingPathMatcher.
      */
     @Test
     public void testAddLast_Pattern() {
         System.out.println("addLast");
-        Pattern pattern = null;
-        PatternRoutingMatcher instance = new PatternRoutingMatcher();
-        PatternRoutingMatcher expResult = null;
-        PatternRoutingMatcher result = instance.addLast(pattern);
+        RoutingConfig pattern = null;
+        RoutingPathMatcher instance = new RoutingPathMatcher();
+        RoutingPathMatcher expResult = null;
+        RoutingPathMatcher result = instance.add(pattern);
         assertEquals(expResult, result);
         Assert.assertException();
         // TODO review the generated test code and remove the default call to fail.
@@ -123,7 +123,7 @@ public class MethodlessRouterTest {
     }
 
     /**
-     * Test of addLast method, of class PatternRoutingMatcher.
+     * Test of add method, of class RoutingPathMatcher.
      *
      * @throws java.lang.Exception
      */
@@ -132,64 +132,64 @@ public class MethodlessRouterTest {
         System.out.println("addLast");
         String path = "";
         ChannelHandler target = null;
-        PatternRoutingMatcher instance = new PatternRoutingMatcher();
-        PatternRoutingMatcher expResult = null;
-        PatternRoutingMatcher result = instance.addLast(path, target);
+        RoutingPathMatcher instance = new RoutingPathMatcher();
+        RoutingPathMatcher expResult = null;
+        RoutingPathMatcher result = instance.addLast(path, target);
         assertEquals(expResult, result);
         // TODO review the generated test code and remove the default call to fail.
         fail("The test case is a prototype.");
     }
 
     /**
-     * Test of remove method, of class PatternRoutingMatcher.
+     * Test of remove method, of class RoutingPathMatcher.
      */
     @Test
     public void testRemove_ChannelHandler() {
         System.out.println("remove");
         ChannelHandler target = null;
-        PatternRoutingMatcher instance = new PatternRoutingMatcher();
-        PatternRoutingMatcher expResult = null;
-        PatternRoutingMatcher result = instance.remove(target);
+        RoutingPathMatcher instance = new RoutingPathMatcher();
+        RoutingPathMatcher expResult = null;
+        RoutingPathMatcher result = instance.remove(target);
         assertEquals(expResult, result);
         // TODO review the generated test code and remove the default call to fail.
         fail("The test case is a prototype.");
     }
 
     /**
-     * Test of remove method, of class PatternRoutingMatcher.
+     * Test of remove method, of class RoutingPathMatcher.
      */
     @Test
     public void testRemove_String() {
         System.out.println("remove");
         String path = "";
-        PatternRoutingMatcher instance = new PatternRoutingMatcher();
-        PatternRoutingMatcher expResult = null;
-        PatternRoutingMatcher result = instance.remove(path);
+        RoutingPathMatcher instance = new RoutingPathMatcher();
+        RoutingPathMatcher expResult = null;
+        RoutingPathMatcher result = instance.remove(path);
         assertEquals(expResult, result);
         // TODO review the generated test code and remove the default call to fail.
         fail("The test case is a prototype.");
     }
 
     /**
-     * Test of match method, of class PatternRoutingMatcher.
+     * Test of match method, of class RoutingPathMatcher.
      */
     @Test
     public void testMatch() {
         System.out.println("match");
         // EXPECT TRUE============================
-        assertSame(this.mockRootPath, this.routerInstance.match("/").getTarget());
-        assertSame(this.mockStandardBankaiPath, this.routerInstance.match("/standard/bankai/path").getTarget());
-        assertSame(this.mockOvermatchBankaiPath, this.routerInstance.match("/standard/bankai/path/over/match").getTarget());
-        assertSame(this.mockOneParamBankaiPath, this.routerInstance.match("/standard/value1/bankai/path").getTarget());
+        assertSame(this.mockRootPath, this.routerInstance.match("/").targetPipeline());
+        assertSame(this.mockStandardBankaiPath, this.routerInstance.match("/standard/bankai/path").targetPipeline());
+        assertSame(this.mockOvermatchBankaiPath, this.routerInstance.match("/standard/bankai/path/over/match").targetPipeline());
+        assertSame(this.mockOneParamBankaiPath, this.routerInstance.match("/standard/value1/bankai/path").targetPipeline());
         final Routed result_two_param_bankai_path = this.routerInstance.match("/standard/value1/bankai/value2/path");
-        assertSame(this.mockTwoParamBankaiPath, result_two_param_bankai_path.getTarget());
+        assertSame(this.mockTwoParamBankaiPath, result_two_param_bankai_path.targetPipeline());
         assertEquals("value1", result_two_param_bankai_path.decodedParams().get("p1"));
         assertEquals("value2", result_two_param_bankai_path.decodedParams().get("p2"));
         assertNull(this.routerInstance.match("/standard/value1/bankai/value2/path/notFound"));
     }
 
     /**
-     * Test of generatePath method, of class PatternRoutingMatcher.
+     * Test of generatePath method, of class RoutingPathMatcher.
      */
     @Test
     public void testGeneratePath() {
