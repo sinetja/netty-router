@@ -54,6 +54,10 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
 
     private final ConcurrentMap<Channel, ConcurrentMap<String, Routing>> configuredPipeline = new ConcurrentHashMap<Channel, ConcurrentMap<String, Routing>>();
 
+    public HttpRouter() {
+        super(false, "HttpRouter");
+    }
+
     @Override
     public void write(final ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
         if (msg instanceof HttpException) {
@@ -196,12 +200,14 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
         final RoutingPathMatched routed;
         if ((matcher = this.matcherIndex.PATH_MATCHERS.get(msg.method().toString())) == null) {
             // @TODO Method not support and write this error back.
-            throw new NotFoundException(qsd.path(), msg);
+            this.exceptionForward(new NotFoundException(qsd.path(), msg));
+            return null;
         } else {
             routed = matcher.match(qsd.path());
         }
         if (routed == null) {
-            throw new NotFoundException(qsd.path(), msg);
+            this.exceptionForward(new NotFoundException(qsd.path(), msg));
+            return null;
         }
         this.activeRouted.put(ctx.channel(), new ActiveRoutedEntry(routed.getRouting(), msg));
         if (!this.configuredPipeline.get(ctx.channel()).containsKey(routed.getRouting().getIdentity())) {

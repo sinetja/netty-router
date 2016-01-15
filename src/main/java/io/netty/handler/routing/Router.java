@@ -13,6 +13,7 @@ import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelHandlerInvokerUtil;
 import io.netty.channel.ChannelPipeline;
+import io.netty.util.IllegalReferenceCountException;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
@@ -38,19 +39,47 @@ public abstract class Router extends ChannelHandlerAdapter {
 
     private RoutingPipeline exceptionPipeline;
 
+    private final boolean autoRelease;
+
+    private final String routerTypeName;
+
+    /**
+     * It should be set to false if this router is added after a decoder
+     * handler, or {@link IllegalReferenceCountException} would be raised.
+     *
+     * @param autoRelease
+     */
+    public Router(boolean autoRelease) {
+        this.autoRelease = autoRelease;
+        this.routerTypeName = this.getClass().getName();
+    }
+
+    public Router(boolean autoRelease, String routerTypeName) {
+        this.autoRelease = autoRelease;
+        this.routerTypeName = routerTypeName;
+    }
+
+    public Router() {
+        this(true);
+    }
+
     @Override
     public final void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        LOG.debug(msg.toString());
         try {
             this.route(ctx, msg, routingPipelines);
         } finally {
-            ReferenceCountUtil.release(msg);
+            if (autoRelease) {
+                try {
+                    ReferenceCountUtil.release(msg);
+                } catch (IllegalReferenceCountException e) {
+                    LOG.warn(MessageFormat.format("Message {0} seems deallocated previously, please be sure Router[{1}] doesn't follow any decoder.", msg.getClass(), this.routerTypeName));
+                }
+            }
         }
     }
 
     @Override
     public final void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        LOG.debug("BANKAI");
         this.exceptionPipeline = (RoutingPipeline) this.newRouting(ctx);
         this.initExceptionRouting(exceptionPipeline);
         this.initRouter(ctx);
@@ -94,9 +123,6 @@ public abstract class Router extends ChannelHandlerAdapter {
      */
     protected final void pipelineForward(ChannelPipeline pipeline, Object msg) {
         try {
-            LOG.debug(MessageFormat.format("START: {0}", ((RoutingPipeline) pipeline).getStart().getAnchorName()));
-            LOG.debug(MessageFormat.format("CONTEXT: {0}", ((RoutingPipeline) pipeline).getStart().getContext()));
-            LOG.debug(MessageFormat.format("CONTEXT: {0}", pipeline.channel().pipeline().context(((RoutingPipeline) pipeline).getStart())));
             ChannelHandlerInvokerUtil.invokeChannelReadNow(((RoutingPipeline) pipeline).getStart().getContext(), msg);
         } catch (NullPointerException e) {
             if (pipeline == null) {
@@ -122,7 +148,31 @@ public abstract class Router extends ChannelHandlerAdapter {
      * @return
      */
     protected final boolean replaceActivePipeline(ChannelHandlerContext ctx, ChannelPipeline old, ChannelPipeline neww) {
-        return this.activePipeline.replace(ctx.channel(), (RoutingPipeline) old, (RoutingPipeline) neww);
+        try {
+            if (this.activePipeline.replace(ctx.channel(), (RoutingPipeline) old, (RoutingPipeline) neww)) {
+                return true;
+            }
+        } catch (NullPointerException e) {
+            if (old != null && neww != null) {
+                throw e;
+            } else if (ctx == null) {
+                throw e;
+            }
+        }
+        if (old == null && neww != null) {
+            return this.activePipeline.putIfAbsent(ctx.channel(), (RoutingPipeline) neww) == null;
+        }
+        if (old != null && neww == null) {
+            return this.activePipeline.remove(ctx.channel(), old);
+        }
+        if (old == null && neww == null) {
+            return this.activePipeline.containsKey(ctx.channel());
+        }
+        return false;
+    }
+
+    protected final String getRouterTypeName() {
+        return this.routerTypeName;
     }
 
     /**

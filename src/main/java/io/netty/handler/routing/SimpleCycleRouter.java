@@ -28,9 +28,21 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
     private static final InternalLogger LOG = InternalLoggerFactory.getInstance(SimpleCycleRouter.class);
 
     private final TypeParameterMatcher matcherBegin = TypeParameterMatcher.find(this, SimpleCycleRouter.class, "BEGIN");
-    private final TypeParameterMatcher matcherEnd = TypeParameterMatcher.find(this, SimpleCycleRouter.class, "BEGIN");
+    private final TypeParameterMatcher matcherEnd = TypeParameterMatcher.find(this, SimpleCycleRouter.class, "END");
 
     private final AtomicReference<RoutingPipeline> activePipeline = new AtomicReference<RoutingPipeline>(null);
+
+    public SimpleCycleRouter() {
+        super();
+    }
+
+    public SimpleCycleRouter(boolean autoRelease, String routerTypeName) {
+        super(autoRelease, routerTypeName);
+    }
+
+    public SimpleCycleRouter(boolean autoRelease) {
+        super(autoRelease);
+    }
 
     @Override
     protected void route(ChannelHandlerContext ctx, Object msg, Map<String, ChannelPipeline> routingPipelines) throws Exception {
