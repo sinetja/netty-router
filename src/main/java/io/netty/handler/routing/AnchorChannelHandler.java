@@ -46,7 +46,7 @@ class AnchorChannelHandler extends ChannelHandlerAdapter {
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
         this.ctx = ctx;
-        LOG.debug(MessageFormat.format("HANDLER ADDED:[AnchorChannelHandler#{0}#{1}]", this.getAnchorName(), this.parentPipeline.getPipelineName()));
+        //LOG.debug(MessageFormat.format("HANDLER ADDED:[AnchorChannelHandler#{0}#{1}]", this.getAnchorName(), this.parentPipeline.getPipelineName()));
     }
 
 }
