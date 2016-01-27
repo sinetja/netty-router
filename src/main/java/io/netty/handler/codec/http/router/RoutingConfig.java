@@ -8,6 +8,7 @@
  */
 package io.netty.handler.codec.http.router;
 
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.HttpMethod;
 
@@ -52,6 +53,36 @@ public interface RoutingConfig {
             return new HttpMethod[]{HttpMethod.GET};
         }
 
+    }
+
+    public static class SimplePathGet extends GET {
+
+        private final String routingName;
+
+        private final String path;
+
+        private final ChannelHandler[] handlers;
+
+        public SimplePathGet(String routingName, String path, ChannelHandler... handler) {
+            this.routingName = routingName;
+            this.handlers = handler;
+            this.path = path;
+        }
+
+        @Override
+        public String configureRoutingName() {
+            return this.routingName;
+        }
+
+        @Override
+        public String configurePath() {
+            return this.path;
+        }
+
+        @Override
+        public void configurePipeline(ChannelPipeline pipeline) {
+            pipeline.addLast(handlers);
+        }
     }
 
     public static abstract class HEAD implements RoutingConfig {
