@@ -10,10 +10,12 @@ package io.netty.handler.routing;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
+import io.netty.util.internal.RecyclableArrayList;
 import io.netty.util.internal.TypeParameterMatcher;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import java.text.MessageFormat;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -54,7 +56,12 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
                 if (pipeline == null) {
                     return;
                 }
-                this.pipelineForward(pipeline, msg);
+                RecyclableArrayList forward_list = RecyclableArrayList.newInstance();
+                this.decode(ctx, (BEGIN) msg, forward_list);
+                for (Object forward_out : forward_list) {
+                    this.pipelineForward(pipeline, forward_out);
+                }
+                forward_list.recycle();
                 return;
             } else {
                 LOG.warn(MessageFormat.format("Message Begin [{1}] Occured in active Pipeline [0]", this.activePipeline.get().getPipelineName(), msg.toString()));
@@ -73,6 +80,19 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
         } else {
             LOG.info(MessageFormat.format("One message no routing to forward: {0}", msg.toString()));
         }
+    }
+
+    /**
+     * Decode the message object from {@code in} to {@code out}
+     *
+     * @param ctx the {@link ChannelHandlerContext} which this Router Belongs
+     * to.
+     * @param in the message object to be decoded
+     * @param out the {@link List} to which decoded messages should be added.
+     * @throws Exception is thrown if an error occurs.
+     */
+    protected void decode(ChannelHandlerContext ctx, BEGIN in, List<Object> out) throws Exception {
+        out.add(in);
     }
 
     protected abstract ChannelPipeline routeBegin(ChannelHandlerContext ctx, BEGIN msg, Map<String, ChannelPipeline> routingPipelines) throws Exception;
