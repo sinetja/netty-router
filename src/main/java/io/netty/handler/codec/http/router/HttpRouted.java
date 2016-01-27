@@ -8,8 +8,8 @@
  */
 package io.netty.handler.codec.http.router;
 
-import io.netty.channel.ChannelHandler;
 import io.netty.handler.codec.http.HttpRequest;
+import java.text.MessageFormat;
 import java.util.Map;
 
 /**
@@ -41,6 +41,11 @@ public class HttpRouted {
 
     public String getPatternName() {
         return this.pathMatched.getRouting().getName();
+    }
+
+    @Override
+    public String toString() {
+        return MessageFormat.format("HttpRouted({0})", this.getPatternName());
     }
 
 }
