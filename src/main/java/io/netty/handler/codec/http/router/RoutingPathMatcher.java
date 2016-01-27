@@ -8,12 +8,16 @@
  */
 package io.netty.handler.codec.http.router;
 
+import io.netty.util.internal.logging.InternalLogger;
+import io.netty.util.internal.logging.InternalLoggerFactory;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -22,6 +26,8 @@ import java.util.Set;
  * @author Richard Lea <chigix@zoho.com>
  */
 class RoutingPathMatcher {
+
+    private static final InternalLogger LOG = InternalLoggerFactory.getInstance(RoutingPathMatcher.class);
 
     /**
      * The list of all the patterns managed in this router. Mainly used to be
@@ -37,7 +43,9 @@ class RoutingPathMatcher {
      * @return
      */
     public RoutingPathMatcher add(Routing pattern) {
-        this.patterns.put(pattern.getName(), pattern);
+        if (this.patterns.put(pattern.getName(), pattern) != null) {
+            LOG.warn("There is Routing Override occured in same name: " + pattern.getName());
+        }
         return this;
     }
 
@@ -49,10 +57,14 @@ class RoutingPathMatcher {
      * @return
      */
     public RoutingPathMatcher remove(String path) {
+        List<String> tobeRemovedPatterns = new ArrayList<String>();
         for (Map.Entry<String, Routing> entrySet : this.patterns.entrySet()) {
             if (entrySet.getValue().getPath().equals(RouterUtil.normalizePath(path))) {
-                this.patterns.remove(entrySet.getKey());
+                tobeRemovedPatterns.add(entrySet.getKey());
             }
+        }
+        for (String routingName : tobeRemovedPatterns) {
+            this.patterns.remove(routingName);
         }
         return this;
     }
@@ -61,7 +73,7 @@ class RoutingPathMatcher {
     /**
      * Returns the mapping routed information object with target object for the
      * given generatePath. This is THE MAIN match support funciton for this
- RoutingPathMatcher.
+     * RoutingPathMatcher.
      *
      * @param path
      * @return The {@code null} return means "NOT FOUND", which is usually
