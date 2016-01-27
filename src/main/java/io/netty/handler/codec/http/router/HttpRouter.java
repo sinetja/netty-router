@@ -33,6 +33,7 @@ import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import java.text.MessageFormat;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -53,6 +54,8 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
     private final Map<Channel, ActiveRoutedEntry> activeRouted = new HashMap<Channel, ActiveRoutedEntry>();
 
     private final ConcurrentMap<Channel, ConcurrentMap<String, Routing>> configuredPipeline = new ConcurrentHashMap<Channel, ConcurrentMap<String, Routing>>();
+
+    private final ConcurrentMap<HttpRequest, HttpRouted> routedCollection = new ConcurrentHashMap<HttpRequest, HttpRouted>();
 
     public HttpRouter() {
         super(false, "HttpRouter");
@@ -126,6 +129,12 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
     protected void initRoutings(ChannelHandlerContext ctx, HttpRouter router) {
     }
 
+    /**
+     * The only suggestion to define new HTTP routing.
+     *
+     * @param ctx
+     * @param routingConf
+     */
     protected void newRouting(ChannelHandlerContext ctx, RoutingConfig routingConf) {
         for (HttpMethod configureMethod : routingConf.configureMethods()) {
             RoutingPathMatcher matcher;
@@ -210,16 +219,28 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
             return null;
         }
         this.activeRouted.put(ctx.channel(), new ActiveRoutedEntry(routed.getRouting(), msg));
-        if (!this.configuredPipeline.get(ctx.channel()).containsKey(routed.getRouting().getIdentity())) {
+        if (null == this.configuredPipeline.get(ctx.channel()).putIfAbsent(routed.getRouting().getIdentity(), routed.getRouting())) {
             // Add Handlers
             routed.getRouting().unwrap().configurePipeline(routingPipelines.get(routed.getRouting().getIdentity()));
         }
+        this.routedCollection.put(msg, new HttpRouted(routed, msg));
         return routingPipelines.get(routed.getRouting().getIdentity());
     }
 
     @Override
     protected final boolean routeEnd(ChannelHandlerContext ctx, LastHttpContent msg) throws Exception {
         return true;
+    }
+
+    @Override
+    protected void decode(ChannelHandlerContext ctx, HttpRequest in, List<Object> out) throws Exception {
+        HttpRouted routed;
+        if ((routed = this.routedCollection.get(in)) instanceof HttpRouted) {
+            this.routedCollection.remove(in);
+            out.add(routed);
+        } else {
+            out.add(in);
+        }
     }
 
     private class RoutingIndex {
