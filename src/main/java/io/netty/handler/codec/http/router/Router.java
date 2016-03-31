@@ -178,7 +178,7 @@ public class Router<T> {
      * A path can only point to one target. This method does nothing if the path
      * has already been added.
      */
-    public Router addRouteFirst(HttpMethod method, String path, T target) {
+    public Router<T> addRouteFirst(HttpMethod method, String path, T target) {
         getMethodlessRouter(method).addRouteFirst(path, target);
         return this;
     }
@@ -189,7 +189,7 @@ public class Router<T> {
      * A path can only point to one target. This method does nothing if the path
      * has already been added.
      */
-    public Router addRoute(HttpMethod method, String path, T target) {
+    public Router<T> addRoute(HttpMethod method, String path, T target) {
         getMethodlessRouter(method).addRoute(path, target);
         return this;
     }
@@ -200,7 +200,7 @@ public class Router<T> {
      * A path can only point to one target. This method does nothing if the path
      * has already been added.
      */
-    public Router addRouteLast(HttpMethod method, String path, T target) {
+    public Router<T> addRouteLast(HttpMethod method, String path, T target) {
         getMethodlessRouter(method).addRouteLast(path, target);
         return this;
     }
@@ -209,7 +209,7 @@ public class Router<T> {
      * Sets the fallback target for use when there's no match at
      * {@link #route(HttpMethod, String)}.
      */
-    public Router notFound(T target) {
+    public Router<T> notFound(T target) {
         this.notFound = target;
         return this;
     }
@@ -467,127 +467,127 @@ public class Router<T> {
 
     //--------------------------------------------------------------------------
 
-    public Router CONNECT(String path, T target) {
+    public Router<T> CONNECT(String path, T target) {
         return addRoute(HttpMethod.CONNECT, path, target);
     }
 
-    public Router DELETE(String path, T target) {
+    public Router<T> DELETE(String path, T target) {
         return addRoute(HttpMethod.DELETE, path, target);
     }
 
-    public Router GET(String path, T target) {
+    public Router<T> GET(String path, T target) {
         return addRoute(HttpMethod.GET, path, target);
     }
 
-    public Router HEAD(String path, T target) {
+    public Router<T> HEAD(String path, T target) {
         return addRoute(HttpMethod.HEAD, path, target);
     }
 
-    public Router OPTIONS(String path, T target) {
+    public Router<T> OPTIONS(String path, T target) {
         return addRoute(HttpMethod.OPTIONS, path, target);
     }
 
-    public Router PATCH(String path, T target) {
+    public Router<T> PATCH(String path, T target) {
         return addRoute(HttpMethod.PATCH, path, target);
     }
 
-    public Router POST(String path, T target) {
+    public Router<T> POST(String path, T target) {
         return addRoute(HttpMethod.POST, path, target);
     }
 
-    public Router PUT(String path, T target) {
+    public Router<T> PUT(String path, T target) {
         return addRoute(HttpMethod.PUT, path, target);
     }
 
-    public Router TRACE(String path, T target) {
+    public Router<T> TRACE(String path, T target) {
         return addRoute(HttpMethod.TRACE, path, target);
     }
 
-    public Router ANY(String path, T target) {
+    public Router<T> ANY(String path, T target) {
         return addRoute(null, path, target);
     }
 
     //--------------------------------------------------------------------------
 
-    public Router CONNECT_FIRST(String path, T target) {
+    public Router<T> CONNECT_FIRST(String path, T target) {
         return addRouteFirst(HttpMethod.CONNECT, path, target);
     }
 
-    public Router DELETE_FIRST(String path, T target) {
+    public Router<T> DELETE_FIRST(String path, T target) {
         return addRouteFirst(HttpMethod.DELETE, path, target);
     }
 
-    public Router GET_FIRST(String path, T target) {
+    public Router<T> GET_FIRST(String path, T target) {
         return addRouteFirst(HttpMethod.GET, path, target);
     }
 
-    public Router HEAD_FIRST(String path, T target) {
+    public Router<T> HEAD_FIRST(String path, T target) {
         return addRouteFirst(HttpMethod.HEAD, path, target);
     }
 
-    public Router OPTIONS_FIRST(String path, T target) {
+    public Router<T> OPTIONS_FIRST(String path, T target) {
         return addRouteFirst(HttpMethod.OPTIONS, path, target);
     }
 
-    public Router PATCH_FIRST(String path, T target) {
+    public Router<T> PATCH_FIRST(String path, T target) {
         return addRouteFirst(HttpMethod.PATCH, path, target);
     }
 
-    public Router POST_FIRST(String path, T target) {
+    public Router<T> POST_FIRST(String path, T target) {
         return addRouteFirst(HttpMethod.POST, path, target);
     }
 
-    public Router PUT_FIRST(String path, T target) {
+    public Router<T> PUT_FIRST(String path, T target) {
         return addRouteFirst(HttpMethod.PUT, path, target);
     }
 
-    public Router TRACE_FIRST(String path, T target) {
+    public Router<T> TRACE_FIRST(String path, T target) {
         return addRouteFirst(HttpMethod.TRACE, path, target);
     }
 
-    public Router ANY_FIRST(String path, T target) {
+    public Router<T> ANY_FIRST(String path, T target) {
         return addRouteFirst(null, path, target);
     }
 
     //--------------------------------------------------------------------------
 
-    public Router CONNECT_LAST(String path, T target) {
+    public Router<T> CONNECT_LAST(String path, T target) {
         return addRouteLast(HttpMethod.CONNECT, path, target);
     }
 
-    public Router DELETE_LAST(String path, T target) {
+    public Router<T> DELETE_LAST(String path, T target) {
         return addRouteLast(HttpMethod.DELETE, path, target);
     }
 
-    public Router GET_LAST(String path, T target) {
+    public Router<T> GET_LAST(String path, T target) {
         return addRouteLast(HttpMethod.GET, path, target);
     }
 
-    public Router HEAD_LAST(String path, T target) {
+    public Router<T> HEAD_LAST(String path, T target) {
         return addRouteLast(HttpMethod.HEAD, path, target);
     }
 
-    public Router OPTIONS_LAST(String path, T target) {
+    public Router<T> OPTIONS_LAST(String path, T target) {
         return addRouteLast(HttpMethod.OPTIONS, path, target);
     }
 
-    public Router PATCH_LAST(String path, T target) {
+    public Router<T> PATCH_LAST(String path, T target) {
         return addRouteLast(HttpMethod.PATCH, path, target);
     }
 
-    public Router POST_LAST(String path, T target) {
+    public Router<T> POST_LAST(String path, T target) {
         return addRouteLast(HttpMethod.POST, path, target);
     }
 
-    public Router PUT_LAST(String path, T target) {
+    public Router<T> PUT_LAST(String path, T target) {
         return addRouteLast(HttpMethod.PUT, path, target);
     }
 
-    public Router TRACE_LAST(String path, T target) {
+    public Router<T> TRACE_LAST(String path, T target) {
         return addRouteLast(HttpMethod.TRACE, path, target);
     }
 
-    public Router ANY_LAST(String path, T target) {
+    public Router<T> ANY_LAST(String path, T target) {
         return addRouteLast(null, path, target);
     }
 }
