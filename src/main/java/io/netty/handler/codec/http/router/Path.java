@@ -16,7 +16,6 @@
 package io.netty.handler.codec.http.router;
 
 import io.netty.util.internal.ObjectUtil;
-import io.netty.util.internal.StringUtil;
 
 import java.util.Map;
 
@@ -45,7 +44,7 @@ final class Path {
             beginIndex++;
         }
         if (beginIndex == path.length()) {
-            return StringUtil.EMPTY_STRING;
+            return "";
         }
 
         int endIndex = path.length() - 1;
@@ -69,7 +68,7 @@ final class Path {
      */
     public Path(String path) {
         this.path   = removeSlashesAtBothEnds(ObjectUtil.checkNotNull(path, "path"));
-        this.tokens = StringUtil.split(this.path, '/');
+        this.tokens = this.path.split("/");
     }
 
     /** Returns the path given at the constructor, without slashes at both ends. */
