@@ -9,9 +9,6 @@
 package io.netty.handler.codec.http.router;
 
 import java.text.MessageFormat;
-import java.util.UUID;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -50,18 +47,9 @@ public class RouterUtilTest {
     @Test
     public void testNormalizePath() {
         System.out.println("normalizePath");
-        try {
-            assertEquals("/bankai/", RouterUtil.normalizePath("/bankai/"));
-        } catch (InvalidPathException ex) {
-            fail(ex.getMessage());
-            Logger.getLogger(RouterUtilTest.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        try {
-            assertEquals("/bankai/", RouterUtil.normalizePath("/bankai"));
-        } catch (InvalidPathException ex) {
-            fail(ex.getMessage());
-            Logger.getLogger(RouterUtilTest.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        assertEquals("/bankai/", RouterUtil.normalizePath("/bankai/"));
+        assertEquals("/bankai/", RouterUtil.normalizePath("//bankai/"));
+        assertEquals("/bankai/", RouterUtil.normalizePath("/bankai/////"));
         try {
             assertNotSame("bankai", RouterUtil.normalizePath("bankai"));
             fail(MessageFormat.format("{0} is not thrown", InvalidPathException.class));

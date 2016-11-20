@@ -31,6 +31,7 @@ class RouterUtil {
         } else {
             throw new InvalidPathException(path, InvalidPathException.InvalidReason.NOT_BEGIN_WITH_SLASH);
         }
+        // Url like `/.+` would be processed by the following.
         int endIndex = path.length() - 1;
         while (endIndex > beginIndex && path.charAt(endIndex) == '/') {
             endIndex--;
