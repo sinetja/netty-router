@@ -42,7 +42,7 @@ public class NotFoundException extends HttpException {
 
     @Override
     public Routing getMatchedRouting() {
-        return null;
+        throw new UnsupportedOperationException("Not supported in NotFound.");
     }
 
 }
