@@ -20,6 +20,12 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
+ * Simply separate packages in pipeline through Classes with special names
+ * given.
+ *
+ * Exactly, I have to say that this Router Class is specially designed for
+ * HttpRouter. Seldomly routing messages consist so complicated message anchors
+ * like HTTP protocol.
  *
  * @author Richard Lea <chigix@zoho.com>
  * @param <BEGIN> The type of the message to start one new routing.
@@ -48,14 +54,20 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
 
     @Override
     protected void route(ChannelHandlerContext ctx, Object msg, Map<String, ChannelPipeline> routingPipelines) throws Exception {
+        if (!ctx.channel().isOpen()) {
+            LOG.debug(MessageFormat.format("One message is trying to be put in a closed channel: {0}", ctx.channel().id()));
+            return;
+        }
         RoutingPipeline pipeline;
         if (this.matcherBegin.match(msg)) {
             pipeline = (RoutingPipeline) this.routeBegin(ctx, (BEGIN) msg, routingPipelines);
+            if (pipeline == null) {
+                LOG.warn(MessageFormat.format("Null pipeline was returned in channel [{0}], it is suggested to throw exception before set a null as pipeline in channel.", ctx.channel().id()));
+                return;
+            }
             if (this.replaceActivePipeline(ctx, this.activePipeline.get(), pipeline)) {
+                LOG.debug(MessageFormat.format("Channel [{0}] is switched to pipeline [{1}].", ctx.channel().id(), pipeline.getPipelineName()));
                 this.activePipeline.set(pipeline);
-                if (pipeline == null) {
-                    return;
-                }
                 RecyclableArrayList forward_list = RecyclableArrayList.newInstance();
                 this.decode(ctx, (BEGIN) msg, forward_list);
                 for (Object forward_out : forward_list) {
@@ -64,12 +76,14 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
                 forward_list.recycle();
                 return;
             } else {
-                LOG.warn(MessageFormat.format("Message Begin [{1}] Occured in active Pipeline [0]", this.activePipeline.get().getPipelineName(), msg.toString()));
+                LOG.warn(MessageFormat.format("Message Begin [{1}] Occured in occupied Pipeline [{0}]", this.activePipeline.get().getPipelineName(), msg.toString()));
             }
         } else if (this.matcherEnd.match(msg) && this.routeEnd(ctx, (END) msg)) {
             pipeline = (RoutingPipeline) this.activePipeline.get();
-            if (this.replaceActivePipeline(ctx, pipeline, null) && this.activePipeline.compareAndSet(pipeline, null)) {
+            if (this.replaceActivePipeline(ctx, pipeline, null)) {
+                this.activePipeline.set(null);
                 this.pipelineForward(pipeline, msg);
+                LOG.debug(MessageFormat.format("Channel [{0}] is emptied by previous pipeline [{1}] finished.", ctx.channel().id(), pipeline.getPipelineName()));
                 return;
             } else {
                 throw new CycleEndException(pipeline, msg.toString());
@@ -78,7 +92,9 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
         if ((pipeline = (RoutingPipeline) this.activePipeline.get()) != null) {
             this.pipelineForward(pipeline, msg);
         } else {
-            LOG.info(MessageFormat.format("One message no routing to forward: {0}", msg.toString()));
+            LOG.error(MessageFormat.format("One message occured in an empty routing channel: {0}. "
+                    + "Please Check Type Matching required by SimpleCycleRouter in class: {2}",
+                    ctx.channel().id(), msg.toString(), this.getClass().getName()));
         }
     }
 

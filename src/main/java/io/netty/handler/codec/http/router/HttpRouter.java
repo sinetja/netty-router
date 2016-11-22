@@ -26,6 +26,7 @@ import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.handler.codec.http.router.exceptions.NotFoundException;
+import io.netty.handler.codec.http.router.exceptions.UnsupportedMethodException;
 import io.netty.handler.routing.RoutingException;
 import io.netty.handler.routing.SimpleCycleRouter;
 import io.netty.util.CharsetUtil;
@@ -71,21 +72,11 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
             LOG.error(MessageFormat.format("Unprocessed WrappedException occured through {0}, with the request-message:{1}", ((HttpException) msg).getMatchedRouting().getName(), this.activeRouted.get(ctx.channel())), (Throwable) msg);
             return;
         } else if (msg instanceof Exception) {
-            this.exceptionForward(new HttpException((Throwable) msg) {
-
-                @Override
-                public HttpRequest getHttpRequest() {
-                    return activeRouted.get(ctx.channel()).getMessage();
-                }
-
-                @Override
-                public Routing getMatchedRouting() {
-                    return activeRouted.get(ctx.channel()).getRouting();
-                }
-
-            });
-            LOG.debug("EXCEPTION WRITE:[RouterHandler]");
-            return;
+            try {
+                throw (Throwable) msg;
+            } catch (Throwable ex) {
+                LOG.error(ex);
+            }
         }
         super.write(ctx, msg, promise);
     }
@@ -98,9 +89,24 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
 
     @Override
     public void exceptionCaught(final ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        //this.pipelineForward(this.exceptionPipeline, new WrappedException(this.activeRouted.get(ctx.channel()).getMessage(), this.activeRouted.get(ctx.channel()).getRouting(), cause));
-        //this.activeRouted.remove(ctx.channel());
-        LOG.debug("EXCEPTION CAUGHT:[RouterHandler]");
+        if (cause instanceof HttpException) {
+            super.exceptionForward(cause);
+            return;
+        } else if (!(cause instanceof RoutingException)) {
+            LOG.error("Bomb!!!!--Unwrapped exception was throwed:", cause);
+            super.exceptionForward(new HttpException(cause) {
+                @Override
+                public HttpRequest getHttpRequest() {
+                    return activeRouted.get(ctx.channel()).getMessage();
+                }
+
+                @Override
+                public Routing getMatchedRouting() {
+                    throw new UnsupportedOperationException("Not supported for uncached exception.");
+                }
+            });
+            return;
+        }
         final RoutingException exc = (RoutingException) cause;
         if (exc.unwrapException() instanceof HttpException) {
             super.exceptionForward(exc.unwrapException());
@@ -187,7 +193,7 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
 
     @Override
     protected void initExceptionRouting(ChannelPipeline pipeline) {
-        pipeline.addLast(new DefaultHttpExceptionHandler());
+        pipeline.addLast(new SimpleHttpExceptionHandler());
     }
 
     @Override
@@ -208,15 +214,12 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
         final RoutingPathMatcher matcher;
         final RoutingPathMatched routed;
         if ((matcher = this.matcherIndex.PATH_MATCHERS.get(msg.method().toString())) == null) {
-            // @TODO Method not support and write this error back.
-            this.exceptionForward(new NotFoundException(qsd.path(), msg));
-            return null;
+            throw new UnsupportedMethodException(msg);
         } else {
             routed = matcher.match(qsd.path());
         }
         if (routed == null) {
-            this.exceptionForward(new NotFoundException(qsd.path(), msg));
-            return null;
+            throw new NotFoundException(qsd.path(), msg);
         }
         this.activeRouted.put(ctx.channel(), new ActiveRoutedEntry(routed.getRouting(), msg));
         if (null == this.configuredPipeline.get(ctx.channel()).putIfAbsent(routed.getRouting().getIdentity(), routed.getRouting())) {

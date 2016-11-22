@@ -29,7 +29,7 @@ public class CodecUtil {
      * @param request
      * @return
      */
-    public static final ByteBuf[] encodeHttpRequest(HttpRequest request) {
+    public static final Object[] encodeHttpRequest(HttpRequest request) {
         EmbeddedChannel channel = new EmbeddedChannel(new HttpRequestEncoder());
         Assert.assertTrue(channel.writeOutbound(request));
         Assert.assertTrue(channel.finish());
