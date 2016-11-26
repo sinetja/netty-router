@@ -6,14 +6,19 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-package io.netty.handler.codec.http.router.testutils;
+package io.netty.handler.codec.http.router.testutil;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpRequestEncoder;
+import io.netty.handler.codec.http.router.HttpRouted;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Assert;
 
 /**
@@ -41,4 +46,18 @@ public class CodecUtil {
         ByteBuf[] result = new ByteBuf[bytebuffers.size()];
         return bytebuffers.toArray(result);
     }
+
+    public static ChannelHandler createHandlerAsRouteChecker(final AtomicReference<HttpRouted> routedResult) {
+        return new SimpleChannelInboundHandler<HttpRouted>() {
+
+            @Override
+            protected void messageReceived(ChannelHandlerContext ctx, HttpRouted msg) throws Exception {
+                System.out.println("checkerReceived:" + msg.getRequestMsg());
+                if (routedResult != null) {
+                    routedResult.set(msg);
+                }
+            }
+        };
+    }
+
 }

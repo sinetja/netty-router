@@ -8,20 +8,19 @@
  */
 package io.netty.handler.codec.http.router;
 
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
-import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpVersion;
-import io.netty.handler.codec.http.router.testutils.CodecUtil;
-import io.netty.handler.codec.http.router.testutils.CheckableRoutingConfig;
+import io.netty.handler.codec.http.router.testutil.CodecUtil;
+import io.netty.handler.codec.http.router.testutil.CheckableRoutingConfig;
+import io.netty.handler.codec.http.router.testutils.builder.DefaultHttpRequestFactory;
+import io.netty.handler.codec.http.router.testutils.builder.HttpMessageFactory;
+import io.netty.handler.codec.http.router.testutils.builder.HttpRequestBuilder;
+import io.netty.util.CharsetUtil;
 import java.text.MessageFormat;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -73,9 +72,9 @@ public class HttpRouterIT {
 
             @Override
             protected void initRoutings(ChannelHandlerContext ctx, HttpRouter router) {
-                this.newRouting(ctx, CheckableRoutingConfig.PLAIN_ROUTING.setChecker(generateRouteChecker(routed)));
-                this.newRouting(ctx, CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(generateRouteChecker(routed)));
-                this.newRouting(ctx, CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(generateRouteChecker(routed)));
+                this.newRouting(ctx, CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)));
+                this.newRouting(ctx, CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)));
+                this.newRouting(ctx, CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)));
             }
 
             @Override
@@ -93,38 +92,26 @@ public class HttpRouterIT {
             }
 
         });
-        HttpRequest http_req;
-        http_req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/plain/tester/path", Unpooled.copiedBuffer(RandomStringUtils.randomAlphanumeric(500).getBytes()));
-        http_req.headers().set(HttpHeaderNames.HOST, "example.com");
-        http_req.headers().set(HttpHeaderNames.CONTENT_LENGTH, "500");
-        http_req.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
-        //http_req.headers().set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
-        //http_req.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED);
-        channel.writeInbound(CodecUtil.encodeHttpRequest(http_req));
+        HttpRequestBuilder builder = new HttpRequestBuilder(CharsetUtil.UTF_8);
+        builder.header(HttpHeaderNames.HOST, "example.com");
+        builder.header(HttpHeaderNames.CONTENT_LENGTH, "500");
+        builder.header(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+        // builder.header(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
+        // builder.contentType(HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED);
+        HttpMessageFactory factory = new DefaultHttpRequestFactory(HttpVersion.HTTP_1_1, HttpMethod.POST, RandomStringUtils.randomAlphanumeric(500).getBytes());
+        channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory).setUri("/plain/tester/path")));
         Assert.assertSame(CheckableRoutingConfig.PLAIN_ROUTING, routed.get().unwrapRoutingConf());
         LOG.info("PASS [/plain/tester/path]");
         routed.set(null);
-        http_req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "//plain/tester/path", Unpooled.copiedBuffer(RandomStringUtils.randomAlphanumeric(500).getBytes()));
-        http_req.headers().set(HttpHeaderNames.HOST, "example.com");
-        http_req.headers().set(HttpHeaderNames.CONTENT_LENGTH, "500");
-        http_req.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
-        channel.writeInbound(CodecUtil.encodeHttpRequest(http_req));
+        channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory).setUri("//plain/tester/path")));
         Assert.assertSame(CheckableRoutingConfig.PLAIN_ROUTING, routed.get().unwrapRoutingConf());
         LOG.info("PASS [//plain/tester/path]");
         routed.set(null);
-        http_req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/single/var/BANKAI/suffix", Unpooled.copiedBuffer(RandomStringUtils.randomAlphanumeric(500).getBytes()));
-        http_req.headers().set(HttpHeaderNames.HOST, "example.com");
-        http_req.headers().set(HttpHeaderNames.CONTENT_LENGTH, "500");
-        http_req.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
-        channel.writeInbound(CodecUtil.encodeHttpRequest(http_req));
+        channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory).setUri("/single/var/BANKAI/suffix")));
         Assert.assertSame(CheckableRoutingConfig.SINGLE_VAR_ROUTING, routed.get().unwrapRoutingConf());
         LOG.info("PASS [/single/var/BANKAI/suffix]");
         routed.set(null);
-        http_req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/plain/tester//path", Unpooled.copiedBuffer(RandomStringUtils.randomAlphanumeric(500).getBytes()));
-        http_req.headers().set(HttpHeaderNames.HOST, "example.com");
-        http_req.headers().set(HttpHeaderNames.CONTENT_LENGTH, "500");
-        http_req.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
-        channel.writeInbound(CodecUtil.encodeHttpRequest(http_req));
+        channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory).setUri("/plain/tester//path")));
         Assert.assertNull(routed.get());
         if (channel.isOpen()) {
             Assert.fail(MessageFormat.format("Channel#[{0}] is not closed.", channel.id()));
@@ -132,19 +119,6 @@ public class HttpRouterIT {
         LOG.info("PASS [/plain/tester//path]");
         routed.set(null);
         Assert.assertSame(Boolean.FALSE, channelActive.get());
-    }
-
-    private ChannelHandler generateRouteChecker(final AtomicReference<HttpRouted> routed) {
-        return new SimpleChannelInboundHandler<HttpRouted>() {
-
-            @Override
-            protected void messageReceived(ChannelHandlerContext ctx, HttpRouted msg) throws Exception {
-                System.out.println("checkerReceived:" + msg.getRequestMsg());
-                if (routed != null) {
-                    routed.set(msg);
-                }
-            }
-        };
     }
 
 }
