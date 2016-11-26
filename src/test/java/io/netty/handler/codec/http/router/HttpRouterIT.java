@@ -8,13 +8,21 @@
  */
 package io.netty.handler.codec.http.router;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
+import io.netty.handler.codec.http.DefaultHttpContent;
+import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.router.exceptions.BadRequestException;
+import io.netty.handler.codec.http.router.exceptions.UnsupportedMethodException;
 import io.netty.handler.codec.http.router.testutil.CodecUtil;
 import io.netty.handler.codec.http.router.testutil.CheckableRoutingConfig;
 import io.netty.handler.codec.http.router.testutils.builder.DefaultHttpRequestFactory;
@@ -22,6 +30,8 @@ import io.netty.handler.codec.http.router.testutils.builder.HttpMessageFactory;
 import io.netty.handler.codec.http.router.testutils.builder.HttpRequestBuilder;
 import io.netty.util.CharsetUtil;
 import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
@@ -119,6 +129,152 @@ public class HttpRouterIT {
         LOG.info("PASS [/plain/tester//path]");
         routed.set(null);
         Assert.assertSame(Boolean.FALSE, channelActive.get());
+    }
+
+    private ChannelHandler generateExceptionChecker(final AtomicReference<Exception> except, final AtomicReference<Boolean> previouslyClosed) {
+        return new SimpleHttpExceptionHandler() {
+
+            @Override
+            protected void messageReceived(ChannelHandlerContext ctx, HttpException msg) throws Exception {
+                super.messageReceived(ctx, msg);
+                except.set(msg);
+                LOG.debug("EXCEPTIONCAUGHT: channel[" + ctx.channel().id() + "] -- " + msg.toString());
+                if (ctx.channel().isOpen()) {
+                    previouslyClosed.set(Boolean.FALSE);
+                    LOG.warn("Channel [" + ctx.channel().id() + "] haven't been closed.");
+                } else {
+                    previouslyClosed.set(Boolean.TRUE);
+                    LOG.debug("Channel [" + ctx.channel().id() + "] has been closed before exception caught.");
+                }
+            }
+        };
+    }
+
+    @Test
+    public void testOverChunksizedRequestWithoutContentLength() {
+        AtomicReference<Exception> except = new AtomicReference<Exception>();
+        AtomicReference<Boolean> previouslyClosedChecker = new AtomicReference<Boolean>();
+        List<String> chunks = new ArrayList<String>();
+        EmbeddedChannel channel = this.generateSizeTestingChannel(chunks, except, previouslyClosedChecker,
+                CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
+                CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
+                CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)));
+        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192));
+        System.out.println("EmbeddedChannel: " + channel.id());
+        HttpRequestBuilder builder = new HttpRequestBuilder(CharsetUtil.UTF_8);
+        builder.header(HttpHeaderNames.HOST, "example.com");
+        builder.header(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+        builder.header(HttpHeaderNames.CONTENT_LENGTH, "50000");
+        builder.uri("/plain/tester/path");
+        HttpMessageFactory factory = new DefaultHttpRequestFactory(HttpVersion.HTTP_1_1, HttpMethod.POST, RandomStringUtils.randomAlphanumeric(50000).getBytes());
+        System.out.println("WRITE INBOUND - 1st");
+        except.set(null);
+        previouslyClosedChecker.set(Boolean.FALSE);
+        channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory)));
+        Assert.assertEquals(8192, chunks.get(chunks.size() - 2).length());
+        Assert.assertNull(except.get());
+        Assert.assertFalse(previouslyClosedChecker.get());
+        chunks.clear();
+        builder.removeHeader(HttpHeaderNames.CONTENT_LENGTH);
+        LOG.info("[PASS] valid request with content-length in headers.");
+        System.out.println("WRITE INBOUND - 2nd");
+        except.set(null);
+        previouslyClosedChecker.set(Boolean.FALSE);
+        channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory)));
+        for (int i = 0; i < chunks.size(); i++) {
+            String get = chunks.get(i);
+            LOG.info("chunk[" + i + "]: " + get);
+        }
+        // The second chunk, whose length is bigger than 4096, is recognized as 
+        // a new HTTP request. Apparently, it is impossible to parse 
+        // a HTTP request sized as 4096 correctly.
+        Assert.assertEquals(2, chunks.size());
+        Assert.assertTrue(except.get() instanceof BadRequestException);
+        Assert.assertTrue(previouslyClosedChecker.get());
+        chunks.clear();
+    }
+
+    @Test
+    public void testSmallSizeRequestWithoutContentLength() {
+        AtomicReference<Exception> except = new AtomicReference<Exception>();
+        AtomicReference<Boolean> previouslyClosedChecker = new AtomicReference<Boolean>();
+        List<String> chunks = new ArrayList<String>();
+        EmbeddedChannel channel = this.generateSizeTestingChannel(chunks, except, previouslyClosedChecker,
+                CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
+                CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
+                CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)));
+        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192));
+        System.out.println("EmbeddedChannel: " + channel.id());
+        HttpRequestBuilder builder = new HttpRequestBuilder(CharsetUtil.UTF_8);
+        builder.header(HttpHeaderNames.HOST, "example.com");
+        builder.header(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+        builder.header(HttpHeaderNames.CONTENT_LENGTH, "500");
+        builder.uri("/plain/tester/path");
+        HttpMessageFactory factory = new DefaultHttpRequestFactory(HttpVersion.HTTP_1_1, HttpMethod.POST, RandomStringUtils.randomAlphanumeric(500).getBytes());
+        System.out.println("WRITE INBOUND - 1st");
+        except.set(null);
+        previouslyClosedChecker.set(Boolean.FALSE);
+        channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory)));
+        Assert.assertEquals(2, chunks.size());
+        Assert.assertNull(except.get());
+        Assert.assertFalse(previouslyClosedChecker.get());
+        chunks.clear();
+        builder.removeHeader(HttpHeaderNames.CONTENT_LENGTH);
+        LOG.info("[PASS] valid request with content-length in headers.");
+        System.out.println("WRITE INBOUND - 2nd");
+        except.set(null);
+        previouslyClosedChecker.set(Boolean.FALSE);
+        channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory)));
+        Assert.assertEquals(1, chunks.size());
+        Assert.assertNull(except.get());
+        Assert.assertFalse(previouslyClosedChecker.get());
+        chunks.clear();
+        // The second chunk is a string without mark of new line, so this chunk is still waiting to be received.
+        System.out.println("WRITE INBOUND - 3rd");
+        except.set(null);
+        previouslyClosedChecker.set(Boolean.FALSE);
+        channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory)));
+        for (int i = 0; i < chunks.size(); i++) {
+            String get = chunks.get(i);
+            LOG.info("chunk[" + i + "]: " + get.length());
+        }
+        Assert.assertTrue(except.get() instanceof UnsupportedMethodException);
+        Assert.assertTrue(previouslyClosedChecker.get());
+        chunks.clear();
+    }
+
+    private EmbeddedChannel generateSizeTestingChannel(final List<String> chunks, final AtomicReference<Exception> except, final AtomicReference<Boolean> previouslyClosed, final RoutingConfig... routings) {
+        return new EmbeddedChannel(new SimpleChannelInboundHandler<DefaultHttpRequest>() {
+            @Override
+            protected void messageReceived(ChannelHandlerContext ctx, DefaultHttpRequest msg) throws Exception {
+                chunks.add(msg.toString());
+                ctx.fireChannelRead(msg);
+            }
+        }, new SimpleChannelInboundHandler<DefaultHttpContent>() {
+            @Override
+            protected void messageReceived(ChannelHandlerContext ctx, DefaultHttpContent msg) throws Exception {
+                ByteBuf data = msg.content().copy();
+                byte[] bytes = new byte[data.writerIndex()];
+                for (int i = 0; i < bytes.length; i++) {
+                    bytes[i] = data.readByte();
+                }
+                chunks.add(new String(bytes, CharsetUtil.UTF_8));
+                ctx.fireChannelRead(msg.copy());
+            }
+        }, new HttpRouter() {
+            @Override
+            protected void initRoutings(ChannelHandlerContext ctx, HttpRouter router) {
+                for (RoutingConfig routing : routings) {
+                    router.newRouting(ctx, routing);
+                }
+            }
+
+            @Override
+            protected void initExceptionRouting(ChannelPipeline pipeline) {
+                pipeline.addLast(generateExceptionChecker(except, previouslyClosed));
+            }
+
+        });
     }
 
 }

@@ -6,7 +6,7 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-package io.netty.handler.codec.http.router.testutils;
+package io.netty.handler.codec.http.router.testutil;
 
 /**
  * A set of assertion methods useful for writing tests.
