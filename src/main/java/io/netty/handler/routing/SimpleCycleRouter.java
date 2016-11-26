@@ -55,7 +55,8 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
     @Override
     protected void route(ChannelHandlerContext ctx, Object msg, Map<String, ChannelPipeline> routingPipelines) throws Exception {
         if (!ctx.channel().isOpen()) {
-            LOG.debug(MessageFormat.format("One message is trying to be put in a closed channel: {0}", ctx.channel().id()));
+            // Assume this occurance should not exists because closed channel should have also closed socket input.
+            LOG.warn(MessageFormat.format("One message is trying to be put in a closed channel: {0}", ctx.channel().id()));
             return;
         }
         RoutingPipeline pipeline;

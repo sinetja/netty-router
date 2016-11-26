@@ -14,6 +14,7 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.DecoderException;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
@@ -25,6 +26,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.codec.http.QueryStringDecoder;
+import io.netty.handler.codec.http.router.exceptions.BadRequestException;
 import io.netty.handler.codec.http.router.exceptions.NotFoundException;
 import io.netty.handler.codec.http.router.exceptions.UnsupportedMethodException;
 import io.netty.handler.routing.RoutingException;
@@ -91,6 +93,8 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
     public void exceptionCaught(final ChannelHandlerContext ctx, Throwable cause) throws Exception {
         if (cause instanceof HttpException) {
             super.exceptionForward(cause);
+            return;
+        } else if (cause instanceof DecoderException && !ctx.channel().isOpen()) {
             return;
         } else if (!(cause instanceof RoutingException)) {
             LOG.error("Bomb!!!!--Unwrapped exception was throwed:", cause);
@@ -208,6 +212,9 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
 
     @Override
     protected final ChannelPipeline routeBegin(ChannelHandlerContext ctx, HttpRequest msg, Map<String, ChannelPipeline> routingPipelines) throws Exception {
+        if (!msg.decoderResult().isSuccess()) {
+            throw new BadRequestException("Request Decoded Failure", msg);
+        }
         this.activeRouted.put(ctx.channel(), new ActiveRoutedEntry(null, msg));
         // Route
         final QueryStringDecoder qsd = new QueryStringDecoder(msg.uri());

@@ -17,8 +17,7 @@ import io.netty.handler.codec.http.HttpRequest;
 public class UnsupportedMethodException extends BadRequestException {
 
     public UnsupportedMethodException(HttpRequest requestMsg) {
-        super("Unknown Http Method Error", requestMsg);
-        System.out.println("UnsupportedMethodException#method: " + requestMsg.method());
+        super("UnsupportedMethodException#method: " + requestMsg.method(), requestMsg);
     }
 
 }

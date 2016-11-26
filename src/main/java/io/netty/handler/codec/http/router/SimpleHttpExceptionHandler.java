@@ -47,6 +47,7 @@ public class SimpleHttpExceptionHandler extends SimpleChannelInboundHandler<Http
         if (msg instanceof NotFoundException) {
             this.exceptNotFound((NotFoundException) msg, response.headers(), content);
         } else if (msg instanceof BadRequestException) {
+            LOG.warn("[\"" + msg.getMessage() + "\",\"" + ctx.channel().id() + "\",\"" + ctx.channel().remoteAddress() + "\"]");
             this.exceptBadRequest((BadRequestException) msg, response.headers(), content);
         } else {
             this.exceptInternalServerError(msg, response.headers(), content);
