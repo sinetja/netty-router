@@ -8,14 +8,7 @@
  */
 package io.netty.handler.codec.http.router;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
-import io.netty.handler.codec.http.DefaultHttpContent;
-import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMethod;
@@ -77,31 +70,11 @@ public class HttpRouterIT {
      */
     public void testRoutingSwitcher() {
         final AtomicReference<HttpRouted> routed = new AtomicReference<HttpRouted>();
-        final AtomicReference<Boolean> channelActive = new AtomicReference<Boolean>();
-        EmbeddedChannel channel = new EmbeddedChannel(new HttpRequestDecoder(), new HttpRouter() {
-
-            @Override
-            protected void initRoutings(ChannelHandlerContext ctx, HttpRouter router) {
-                this.newRouting(ctx, CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)));
-                this.newRouting(ctx, CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)));
-                this.newRouting(ctx, CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)));
-            }
-
-            @Override
-            public void channelActive(ChannelHandlerContext ctx) throws Exception {
-                super.channelActive(ctx);
-                LOG.debug(MessageFormat.format("Channel [{0}] is actived.", ctx.channel().id()));
-                channelActive.set(Boolean.TRUE);
-            }
-
-            @Override
-            public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-                super.channelInactive(ctx);
-                LOG.debug(MessageFormat.format("Channel [{0}] is inactived and removed in HttpRouter.", ctx.channel().id()));
-                channelActive.set(Boolean.FALSE);
-            }
-
-        });
+        EmbeddedChannel channel = CodecUtil.createTestableChannel(null, null, null,
+                CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)),
+                CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)),
+                CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)));
+        channel.pipeline().addFirst(new HttpRequestDecoder());
         HttpRequestBuilder builder = new HttpRequestBuilder(CharsetUtil.UTF_8);
         builder.header(HttpHeaderNames.HOST, "example.com");
         builder.header(HttpHeaderNames.CONTENT_LENGTH, "500");
@@ -128,26 +101,7 @@ public class HttpRouterIT {
         }
         LOG.info("PASS [/plain/tester//path]");
         routed.set(null);
-        Assert.assertSame(Boolean.FALSE, channelActive.get());
-    }
-
-    private ChannelHandler generateExceptionChecker(final AtomicReference<Exception> except, final AtomicReference<Boolean> previouslyClosed) {
-        return new SimpleHttpExceptionHandler() {
-
-            @Override
-            protected void messageReceived(ChannelHandlerContext ctx, HttpException msg) throws Exception {
-                super.messageReceived(ctx, msg);
-                except.set(msg);
-                LOG.debug("EXCEPTIONCAUGHT: channel[" + ctx.channel().id() + "] -- " + msg.toString());
-                if (ctx.channel().isOpen()) {
-                    previouslyClosed.set(Boolean.FALSE);
-                    LOG.warn("Channel [" + ctx.channel().id() + "] haven't been closed.");
-                } else {
-                    previouslyClosed.set(Boolean.TRUE);
-                    LOG.debug("Channel [" + ctx.channel().id() + "] has been closed before exception caught.");
-                }
-            }
-        };
+        Assert.assertFalse(channel.isOpen());
     }
 
     @Test
@@ -155,7 +109,7 @@ public class HttpRouterIT {
         AtomicReference<Exception> except = new AtomicReference<Exception>();
         AtomicReference<Boolean> previouslyClosedChecker = new AtomicReference<Boolean>();
         List<String> chunks = new ArrayList<String>();
-        EmbeddedChannel channel = this.generateSizeTestingChannel(chunks, except, previouslyClosedChecker,
+        EmbeddedChannel channel = CodecUtil.createTestableChannel(chunks, except, previouslyClosedChecker,
                 CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)));
@@ -199,7 +153,7 @@ public class HttpRouterIT {
         AtomicReference<Exception> except = new AtomicReference<Exception>();
         AtomicReference<Boolean> previouslyClosedChecker = new AtomicReference<Boolean>();
         List<String> chunks = new ArrayList<String>();
-        EmbeddedChannel channel = this.generateSizeTestingChannel(chunks, except, previouslyClosedChecker,
+        EmbeddedChannel channel = CodecUtil.createTestableChannel(chunks, except, previouslyClosedChecker,
                 CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)));
@@ -241,40 +195,6 @@ public class HttpRouterIT {
         Assert.assertTrue(except.get() instanceof UnsupportedMethodException);
         Assert.assertTrue(previouslyClosedChecker.get());
         chunks.clear();
-    }
-
-    private EmbeddedChannel generateSizeTestingChannel(final List<String> chunks, final AtomicReference<Exception> except, final AtomicReference<Boolean> previouslyClosed, final RoutingConfig... routings) {
-        return new EmbeddedChannel(new SimpleChannelInboundHandler<DefaultHttpRequest>() {
-            @Override
-            protected void messageReceived(ChannelHandlerContext ctx, DefaultHttpRequest msg) throws Exception {
-                chunks.add(msg.toString());
-                ctx.fireChannelRead(msg);
-            }
-        }, new SimpleChannelInboundHandler<DefaultHttpContent>() {
-            @Override
-            protected void messageReceived(ChannelHandlerContext ctx, DefaultHttpContent msg) throws Exception {
-                ByteBuf data = msg.content().copy();
-                byte[] bytes = new byte[data.writerIndex()];
-                for (int i = 0; i < bytes.length; i++) {
-                    bytes[i] = data.readByte();
-                }
-                chunks.add(new String(bytes, CharsetUtil.UTF_8));
-                ctx.fireChannelRead(msg.copy());
-            }
-        }, new HttpRouter() {
-            @Override
-            protected void initRoutings(ChannelHandlerContext ctx, HttpRouter router) {
-                for (RoutingConfig routing : routings) {
-                    router.newRouting(ctx, routing);
-                }
-            }
-
-            @Override
-            protected void initExceptionRouting(ChannelPipeline pipeline) {
-                pipeline.addLast(generateExceptionChecker(except, previouslyClosed));
-            }
-
-        });
     }
 
 }
