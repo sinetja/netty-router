@@ -155,4 +155,23 @@ public class CodecUtil {
         };
     }
 
+    public static final String readOutboundString(EmbeddedChannel channel) {
+        StringBuffer sb = null;
+        while (true) {
+            ByteBuf bytebuf = channel.readOutbound();
+            if (bytebuf == null) {
+                break;
+            }
+            if (sb == null) {
+                sb = new StringBuffer();
+            }
+            sb.append(bytebuf.toString(CharsetUtil.UTF_8));
+        }
+        if (sb == null) {
+            return null;
+        } else {
+            return sb.toString();
+        }
+    }
+
 }

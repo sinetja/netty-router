@@ -13,6 +13,7 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequestDecoder;
+import io.netty.handler.codec.http.HttpResponseEncoder;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.router.exceptions.BadRequestException;
 import io.netty.handler.codec.http.router.exceptions.UnsupportedMethodException;
@@ -74,7 +75,7 @@ public class HttpRouterIT {
                 CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)),
                 CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)),
                 CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)));
-        channel.pipeline().addFirst(new HttpRequestDecoder());
+        channel.pipeline().addFirst(new HttpRequestDecoder(), new HttpResponseEncoder());
         HttpRequestBuilder builder = new HttpRequestBuilder(CharsetUtil.UTF_8);
         builder.header(HttpHeaderNames.HOST, "example.com");
         builder.header(HttpHeaderNames.CONTENT_LENGTH, "500");
@@ -99,6 +100,7 @@ public class HttpRouterIT {
         if (channel.isOpen()) {
             Assert.fail(MessageFormat.format("Channel#[{0}] is not closed.", channel.id()));
         }
+        LOG.info("Channel Outbound Stream: " + CodecUtil.readOutboundString(channel));
         LOG.info("PASS [/plain/tester//path]");
         routed.set(null);
         Assert.assertFalse(channel.isOpen());
@@ -113,7 +115,7 @@ public class HttpRouterIT {
                 CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)));
-        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192));
+        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192), new HttpResponseEncoder());
         System.out.println("EmbeddedChannel: " + channel.id());
         HttpRequestBuilder builder = new HttpRequestBuilder(CharsetUtil.UTF_8);
         builder.header(HttpHeaderNames.HOST, "example.com");
@@ -145,6 +147,7 @@ public class HttpRouterIT {
         Assert.assertEquals(2, chunks.size());
         Assert.assertTrue(except.get() instanceof BadRequestException);
         Assert.assertTrue(previouslyClosedChecker.get());
+        LOG.info("Channel Outbound Stream: " + CodecUtil.readOutboundString(channel));
         chunks.clear();
     }
 
@@ -157,7 +160,7 @@ public class HttpRouterIT {
                 CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)));
-        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192));
+        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192), new HttpResponseEncoder());
         System.out.println("EmbeddedChannel: " + channel.id());
         HttpRequestBuilder builder = new HttpRequestBuilder(CharsetUtil.UTF_8);
         builder.header(HttpHeaderNames.HOST, "example.com");
@@ -169,6 +172,7 @@ public class HttpRouterIT {
         except.set(null);
         previouslyClosedChecker.set(Boolean.FALSE);
         channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory)));
+        LOG.info("Channel Outbound Stream: " + CodecUtil.readOutboundString(channel));
         Assert.assertEquals(2, chunks.size());
         Assert.assertNull(except.get());
         Assert.assertFalse(previouslyClosedChecker.get());
@@ -179,6 +183,7 @@ public class HttpRouterIT {
         except.set(null);
         previouslyClosedChecker.set(Boolean.FALSE);
         channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory)));
+        LOG.info("Channel Outbound Stream: " + CodecUtil.readOutboundString(channel));
         Assert.assertEquals(1, chunks.size());
         Assert.assertNull(except.get());
         Assert.assertFalse(previouslyClosedChecker.get());
@@ -192,6 +197,7 @@ public class HttpRouterIT {
             String get = chunks.get(i);
             LOG.info("chunk[" + i + "]: " + get.length());
         }
+        LOG.info("Channel Outbound Stream: " + CodecUtil.readOutboundString(channel));
         Assert.assertTrue(except.get() instanceof UnsupportedMethodException);
         Assert.assertTrue(previouslyClosedChecker.get());
         chunks.clear();

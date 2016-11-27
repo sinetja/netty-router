@@ -9,7 +9,6 @@
 package io.netty.handler.codec.http.router;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -41,18 +40,15 @@ public class SimpleHttpExceptionHandler extends SimpleChannelInboundHandler<Http
 
     @Override
     protected void messageReceived(ChannelHandlerContext ctx, HttpException msg) throws Exception {
-        //this.error(MessageFormat.format("EXCEPTIONCAUGHT: [{1}] {0}", exc.getCause().getMessage(), exc.getSource().getClass().getName()), exc.getCause());
-        ByteBuf content = Unpooled.buffer();
-        FullHttpResponse response = new DefaultFullHttpResponse(msg.getHttpRequest().protocolVersion(), msg.getResponseCode(), content);
+        FullHttpResponse response = new DefaultFullHttpResponse(msg.getHttpRequest().protocolVersion(), msg.getResponseCode());
         if (msg instanceof NotFoundException) {
-            this.exceptNotFound((NotFoundException) msg, response.headers(), content);
+            this.exceptNotFound((NotFoundException) msg, response.headers(), response.content());
         } else if (msg instanceof BadRequestException) {
             LOG.warn("[\"" + msg.getMessage() + "\",\"" + ctx.channel().id() + "\",\"" + ctx.channel().remoteAddress() + "\"]");
-            this.exceptBadRequest((BadRequestException) msg, response.headers(), content);
+            this.exceptBadRequest((BadRequestException) msg, response.headers(), response.content());
         } else {
-            this.exceptInternalServerError(msg, response.headers(), content);
+            this.exceptInternalServerError(msg, response.headers(), response.content());
         }
-        ctx.close();
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
     }
 
