@@ -35,6 +35,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     private final ChannelPipeline parentPipeline;
 
+    private final Router parentRouter;
+
     private final String pipelineName;
 
     private final String handlerNamePrefix;
@@ -50,7 +52,8 @@ class RoutingPipeline implements ChannelPipeline {
      * @param name The name of this pipeline, mostly is proposed as the routing
      * name.
      */
-    public RoutingPipeline(final ChannelHandlerContext routerCtx, final String name) {
+    public RoutingPipeline(final ChannelHandlerContext routerCtx, final String name, Router parentRouter) {
+        this.parentRouter = parentRouter;
         this.handlerNamePrefix = UUID.randomUUID().toString();
         this.pipelineName = name;
         final ChannelPipeline self_pipeline = this;
@@ -105,78 +108,118 @@ class RoutingPipeline implements ChannelPipeline {
         return end;
     }
 
+    public Router getParentRouter() {
+        return parentRouter;
+    }
+
     private String handlerNameFormatter(String handlerName) {
         return this.handlerNamePrefix + "-" + handlerName;
     }
 
     @Override
     public ChannelPipeline addFirst(String name, ChannelHandler handler) {
+        if (handler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        }
         this.parentPipeline.addAfter(this.start.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
     }
 
     @Override
     public ChannelPipeline addFirst(EventExecutorGroup group, String name, ChannelHandler handler) {
+        if (handler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        }
         this.parentPipeline.addAfter(group, this.start.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
     }
 
     @Override
     public ChannelPipeline addFirst(ChannelHandlerInvoker invoker, String name, ChannelHandler handler) {
+        if (handler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        }
         this.parentPipeline.addAfter(invoker, this.start.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
     }
 
     @Override
     public ChannelPipeline addLast(String name, ChannelHandler handler) {
+        if (handler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        }
         this.parentPipeline.addBefore(this.end.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
     }
 
     @Override
     public ChannelPipeline addLast(EventExecutorGroup group, String name, ChannelHandler handler) {
+        if (handler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        }
         this.parentPipeline.addBefore(group, this.end.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
     }
 
     @Override
     public ChannelPipeline addLast(ChannelHandlerInvoker invoker, String name, ChannelHandler handler) {
+        if (handler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        }
         this.parentPipeline.addBefore(invoker, this.end.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
     }
 
     @Override
     public ChannelPipeline addBefore(String baseName, String name, ChannelHandler handler) {
+        if (handler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        }
         this.parentPipeline.addBefore(this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
     }
 
     @Override
     public ChannelPipeline addBefore(EventExecutorGroup group, String baseName, String name, ChannelHandler handler) {
+        if (handler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        }
         this.parentPipeline.addBefore(group, this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
     }
 
     @Override
     public ChannelPipeline addBefore(ChannelHandlerInvoker invoker, String baseName, String name, ChannelHandler handler) {
+        if (handler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        }
         this.parentPipeline.addBefore(invoker, this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
     }
 
     @Override
     public ChannelPipeline addAfter(String baseName, String name, ChannelHandler handler) {
+        if (handler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        }
         this.parentPipeline.addAfter(this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
     }
 
     @Override
     public ChannelPipeline addAfter(EventExecutorGroup group, String baseName, String name, ChannelHandler handler) {
+        if (handler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        }
         this.parentPipeline.addAfter(group, this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
     }
 
     @Override
     public ChannelPipeline addAfter(ChannelHandlerInvoker invoker, String baseName, String name, ChannelHandler handler) {
+        if (handler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        }
         this.parentPipeline.addAfter(invoker, this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
     }
@@ -184,6 +227,9 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addFirst(ChannelHandler... handlers) {
         for (int i = handlers.length - 1; i > 0; i--) {
+            if (handlers[i] instanceof PackageDependencyAware) {
+                ((PackageDependencyAware) handlers[i]).setParentRoutingPipeline(this);
+            }
             this.parentPipeline.addAfter(this.getStart().getAnchorName(), null, handlers[i]);
         }
         return this;
@@ -192,6 +238,9 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addFirst(EventExecutorGroup group, ChannelHandler... handlers) {
         for (int i = handlers.length - 1; i > 0; i--) {
+            if (handlers[i] instanceof PackageDependencyAware) {
+                ((PackageDependencyAware) handlers[i]).setParentRoutingPipeline(this);
+            }
             this.parentPipeline.addAfter(group, this.getStart().getAnchorName(), null, handlers[i]);
         }
         return this;
@@ -200,6 +249,9 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addFirst(ChannelHandlerInvoker invoker, ChannelHandler... handlers) {
         for (int i = handlers.length - 1; i > 0; i--) {
+            if (handlers[i] instanceof PackageDependencyAware) {
+                ((PackageDependencyAware) handlers[i]).setParentRoutingPipeline(this);
+            }
             this.parentPipeline.addAfter(invoker, this.getStart().getAnchorName(), null, handlers[i]);
         }
         return this;
@@ -208,6 +260,9 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addLast(ChannelHandler... handlers) {
         for (ChannelHandler handler : handlers) {
+            if (handler instanceof PackageDependencyAware) {
+                ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+            }
             this.parentPipeline.addBefore(this.getEnd().getAnchorName(), null, handler);
         }
         return this;
@@ -216,6 +271,9 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addLast(EventExecutorGroup group, ChannelHandler... handlers) {
         for (ChannelHandler handler : handlers) {
+            if (handler instanceof PackageDependencyAware) {
+                ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+            }
             this.parentPipeline.addBefore(group, this.getEnd().getAnchorName(), null, handler);
         }
         return this;
@@ -224,6 +282,9 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addLast(ChannelHandlerInvoker invoker, ChannelHandler... handlers) {
         for (ChannelHandler handler : handlers) {
+            if (handler instanceof PackageDependencyAware) {
+                ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+            }
             this.parentPipeline.addBefore(invoker, this.getEnd().getAnchorName(), null, handler);
         }
         return this;
@@ -257,17 +318,26 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline replace(ChannelHandler oldHandler, String newName, ChannelHandler newHandler) {
+        if (newHandler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) newHandler).setParentRoutingPipeline(this);
+        }
         this.parentPipeline.replace(oldHandler, this.handlerNameFormatter(newName), newHandler);
         return this;
     }
 
     @Override
     public ChannelHandler replace(String oldName, String newName, ChannelHandler newHandler) {
+        if (newHandler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) newHandler).setParentRoutingPipeline(this);
+        }
         return this.parentPipeline.replace(this.handlerNameFormatter(oldName), this.handlerNameFormatter(newName), newHandler);
     }
 
     @Override
     public <T extends ChannelHandler> T replace(Class<T> oldHandlerType, String newName, ChannelHandler newHandler) {
+        if (newHandler instanceof PackageDependencyAware) {
+            ((PackageDependencyAware) newHandler).setParentRoutingPipeline(this);
+        }
         return this.parentPipeline.replace(oldHandlerType, this.handlerNameFormatter(newName), newHandler);
     }
 

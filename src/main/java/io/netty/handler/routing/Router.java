@@ -104,7 +104,7 @@ public abstract class Router extends ChannelHandlerAdapter {
         if (name == null) {
             name = "Routing-" + this.nullNameRoutingCount.incrementAndGet();
         }
-        RoutingPipeline pipeline = new RoutingPipeline(ctx, name);
+        RoutingPipeline pipeline = new RoutingPipeline(ctx, name, this);
         ctx.pipeline().addLast(pipeline.getStart().getAnchorName(), pipeline.getStart());
         ctx.pipeline().addAfter(pipeline.getStart().getAnchorName(), pipeline.getEnd().getAnchorName(), pipeline.getEnd());
         this.routingPipelines.put(name, pipeline);
