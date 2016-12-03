@@ -9,7 +9,6 @@
 package io.netty.handler.codec.http.router;
 
 import io.netty.handler.codec.http.HttpMethod;
-import java.util.UUID;
 
 /**
  * The wrapper for the pattern defination including some calculated information

@@ -8,64 +8,66 @@ For detailed usage of each class provided, see the test cases in this repository
 
 # Getting Started
 
-The main classes provided to be used are `RouterHandler` and `HttpRouter`.
+The main class provided in this repository to quickly begin a HTTP router is *io.netty.handler.codec.http.router.HttpRouter*.
 
-Although there is no special restrictions on the usage of `HttpRouter` and route targets can be any type, it is greatly suggested to input `ChannelHandler` object into routing, because of common development upon Netty.
+Just as the developing in Netty writing some classes extending `ChannelHandlerAdapter`, these classes could directly be reused with `HttpRouter`. Originally, `HttpRouter` is designed upon a *Pipeline Router*, the core of the routing implementation provided in this repository. 
 
-When designing these classes, of course, the plan on these central routing classes is could be used individually in any JAVA project without dependency on Netty, however it is just in the plan and current roadmap of this version is focusing on the developer in NETTY.
+`RoutingConfig` is also provided to help users to simply create routing rules in JAVA classes directly, without any other framework or library support. `RoutingConfig` could also be extended to include some customized routing rules.
 
-This router library is as a netty handler, so it could be very sensible for netty users to put this router into practice via creating a new instance of `RouterHandler`, and then insert it into the pipeline. That's all direct instrction of `RouterHandler`.
-
-What's more and more important, the `RouterHandler` needs users to input a list of mapping with the detailed informations of path and target handler, which is called the routing table. And a new instantiation of  `HttpRouter` is for this task:
+A simple map of router config could be written like something bellow:
 
 ```java
-HttpRouter<ChannelHandler> router = new HttpRouter<ChannelHandler>()
-    .GET    ("/bankai", new BankaiHandler())
-    .POST   ("/article", new ArticleHandler())
-    .PUT    ("/user/*", new UserHandler())
-    .DELETE ("/user/:username", new UserHandler());
-
-RouterHandler routerHandler = new RouterHandler(router);
-routerHandler.takePipeline(channel.pipeline());
-```
-
-# Pattern definition
-
-In netty-router, A PATTERN is descibing both of path information and target ChannelHandler to execute.
-
-The path should begin with a slash as a form of absolute path. If there was any invalid check encountered, `InvalidPathException` would be raised immediately.
-
-# Usage of HttpRouter
-
-Basically, the routing info--regarding the pattern of HttpMethod, path definition and target ChannelHandler to run--is provided from this class.
-
-In addition, you can also remove routes by target or by path:
-
-```java
-router.removeTarget(articleHandler);
-router.removeTarget("/articles");
-```
-
-Defaultly, some sever log information would appear, which is upon the default Logging offered by JDK. If you are using SLF4j(Recommened) or Log4j, and so on, you could also be very easy to override the default logging program:
-
-```java
-routerHandler.setLogger(new Logging(){
-    private static final Logger LOG = org.slf4j.LoggerFactory.getLogger(RouterHandler.class);
-    @override
-    public void error(Throwable cause){
-        LOG.error(null, cause);
+new HttpRouter() {
+    @Override
+    protected void initRoutings(ChannelHandlerContext ctx, HttpRouter router) {
+        for (RoutingConfig routing : routings) {
+            this.newGET(ctx, new HomePage());
+            this.newPOST(ctx, new LoginRouting());
+            this.newRouting(ctx, new UserRest());
+        }
     }
+
+    @Override
+    protected void initExceptionRouting(ChannelPipeline pipeline) {
+        pipeline.addLast(generateExceptionChecker(except, previouslyClosed));
+    }
+
 });
+```
+
+# Routing Configuration
+
+A route is a map from a URL to a Pipeline with handlers. Hense, this configuration is to define a pipeline attached with a rule for routing system, upon HTTP protocol.
+
+```java
+new RoutingConfig() {
+    @Override
+    public String configureRoutingName() {
+        return "TARGET_ROUTING";
+    }
+
+    @Override
+    public String configurePath() {
+        return "/name/:name/testing_api";
+    }
+
+    @Override
+    public HttpMethod[] configureMethods() {
+        return new HttpMethod[]{HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.DELETE};
+    }
+
+    @Override
+    public void configurePipeline(ChannelPipeline pipeline) {
+        pipeline.addLast(new ChannelHandlerAdapter()).addLast(new ChannelHandlerAdapter());
+    }
+}
 ```
 
 # Common Error Processing
 
-In netty-router 3, the `exceptionHandler` is provided for process every error occured during the Netty Server working, commonly the exceptions thrown after routed.
-
-In this library, a preset `DefaultHttpExceptionHandler` could also be accessed and override directly for customizing user exception processing codes.
+In a `Router`, there is another special pipeline for handling exception, allowing users to add exception handlers, still the Netty ChannelHandler. So any catched exception could directly throw again and it would be forwarded into this special pipeline, which could make users develop main logical handlers without stress of exception in code.
 
 # TODO
 
+* Shareable Router Handler.
 * Router list Print support.
-* Router Switcher of Pipeline support for multiple handler chaining routed.
-* Complete the Default Error Html Page for the Exception Caught.

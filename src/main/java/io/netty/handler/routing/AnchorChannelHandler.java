@@ -12,7 +12,6 @@ import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
-import java.text.MessageFormat;
 import java.util.UUID;
 
 /**
@@ -46,7 +45,6 @@ class AnchorChannelHandler extends ChannelHandlerAdapter {
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
         this.ctx = ctx;
-        //LOG.debug(MessageFormat.format("HANDLER ADDED:[AnchorChannelHandler#{0}#{1}]", this.getAnchorName(), this.parentPipeline.getPipelineName()));
     }
 
 }

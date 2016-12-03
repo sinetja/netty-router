@@ -8,24 +8,36 @@
  */
 package io.netty.handler.codec.http.router;
 
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelHandlerAdapter;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequestDecoder;
+import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.router.exceptions.BadRequestException;
 import io.netty.handler.codec.http.router.exceptions.UnsupportedMethodException;
 import io.netty.handler.codec.http.router.testutil.CodecUtil;
 import io.netty.handler.codec.http.router.testutil.CheckableRoutingConfig;
+import io.netty.handler.codec.http.router.testutils.builder.ContentTypes;
 import io.netty.handler.codec.http.router.testutils.builder.DefaultHttpRequestFactory;
 import io.netty.handler.codec.http.router.testutils.builder.HttpMessageFactory;
 import io.netty.handler.codec.http.router.testutils.builder.HttpRequestBuilder;
 import io.netty.util.CharsetUtil;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
@@ -65,6 +77,69 @@ public class HttpRouterIT {
     }
 
     @Test
+    public void testSuccessREST() {
+        final Map<String, String> handlerResultChecker = new HashMap<String, String>();
+        AtomicReference<Exception> except = new AtomicReference<Exception>();
+        AtomicReference<Boolean> previouslyClosed = new AtomicReference<Boolean>();
+        previouslyClosed.set(Boolean.FALSE);
+        EmbeddedChannel channel = CodecUtil.createTestableChannel(null, except, previouslyClosed, new RoutingConfig() {
+            @Override
+            public String configureRoutingName() {
+                return "TARGET_ROUTING";
+            }
+
+            @Override
+            public String configurePath() {
+                return "/name/:name/testing_api";
+            }
+
+            @Override
+            public HttpMethod[] configureMethods() {
+                return new HttpMethod[]{HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.DELETE};
+            }
+
+            @Override
+            public void configurePipeline(ChannelPipeline pipeline) {
+                pipeline.addLast(new ChannelHandlerAdapter() {
+                    @Override
+                    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                        System.out.println(msg);
+                        super.channelRead(ctx, msg);
+                    }
+
+                }).addLast(new SimpleChannelInboundHandler<HttpRouted>() {
+                    @Override
+                    protected void messageReceived(ChannelHandlerContext ctx, HttpRouted msg) throws Exception {
+                        String name = (String) msg.decodedParams().get("name");
+                        handlerResultChecker.put("name", name);
+                        handlerResultChecker.put("METHOD", msg.getRequestMsg().method().toString());
+                        if (msg.getRequestMsg().method() == HttpMethod.GET) {
+                            HttpResponse resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer(name.getBytes(CharsetUtil.UTF_8)));
+                            resp.headers().add(HttpHeaderNames.CONTENT_TYPE, ContentTypes.HTML.getValue());
+                            ctx.writeAndFlush(resp);
+                        }
+                        System.out.println(msg.getRequestMsg());
+                    }
+                });
+            }
+        });
+        channel.pipeline().addFirst(new FullResponseLengthFixer());
+        HttpRequestBuilder builder = new HttpRequestBuilder(CharsetUtil.UTF_8);
+        builder.uri("/name/Richard/testing_api");
+        builder.accept(ContentTypes.HTML.getValue());
+        LOG.info("[TESTING] === GET /name/Richard/testing_api");
+        handlerResultChecker.clear();
+        channel.writeInbound(builder.getResult(new DefaultHttpRequestFactory(HttpVersion.HTTP_1_1, HttpMethod.GET)));
+        Assert.assertEquals("Richard", handlerResultChecker.get("name"));
+        Assert.assertEquals("GET", handlerResultChecker.get("METHOD"));
+        FullHttpResponse resp = (FullHttpResponse) channel.readOutbound();
+        Assert.assertEquals("Richard".length() + "", resp.headers().get(HttpHeaderNames.CONTENT_LENGTH));
+        Assert.assertEquals("Richard", resp.content().toString(CharsetUtil.UTF_8));
+        Assert.assertNull(except.get());
+        Assert.assertFalse(previouslyClosed.get());
+    }
+
+    @Test
     /**
      * Put an array of Http Requests into one opened channel, testing for
      * comprehensibility.
@@ -75,7 +150,7 @@ public class HttpRouterIT {
                 CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)),
                 CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)),
                 CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(routed)));
-        channel.pipeline().addFirst(new HttpRequestDecoder(), new HttpResponseEncoder());
+        channel.pipeline().addFirst(new HttpRequestDecoder(), new HttpResponseEncoder(), new FullResponseLengthFixer());
         HttpRequestBuilder builder = new HttpRequestBuilder(CharsetUtil.UTF_8);
         builder.header(HttpHeaderNames.HOST, "example.com");
         builder.header(HttpHeaderNames.CONTENT_LENGTH, "500");
@@ -115,7 +190,7 @@ public class HttpRouterIT {
                 CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)));
-        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192), new HttpResponseEncoder());
+        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192), new HttpResponseEncoder(), new FullResponseLengthFixer());
         System.out.println("EmbeddedChannel: " + channel.id());
         HttpRequestBuilder builder = new HttpRequestBuilder(CharsetUtil.UTF_8);
         builder.header(HttpHeaderNames.HOST, "example.com");
