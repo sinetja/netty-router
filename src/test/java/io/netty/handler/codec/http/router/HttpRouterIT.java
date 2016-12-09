@@ -8,6 +8,7 @@
  */
 package io.netty.handler.codec.http.router;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
@@ -25,6 +26,7 @@ import io.netty.handler.codec.http.HttpResponseEncoder;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.router.exceptions.BadRequestException;
+import io.netty.handler.codec.http.router.exceptions.NotFoundException;
 import io.netty.handler.codec.http.router.exceptions.UnsupportedMethodException;
 import io.netty.handler.codec.http.router.testutil.CodecUtil;
 import io.netty.handler.codec.http.router.testutil.CheckableRoutingConfig;
@@ -33,12 +35,15 @@ import io.netty.handler.codec.http.router.testutils.builder.DefaultHttpRequestFa
 import io.netty.handler.codec.http.router.testutils.builder.HttpMessageFactory;
 import io.netty.handler.codec.http.router.testutils.builder.HttpRequestBuilder;
 import io.netty.util.CharsetUtil;
+import java.io.File;
+import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -278,4 +283,48 @@ public class HttpRouterIT {
         chunks.clear();
     }
 
+    @Test
+    public void testClosedChannelCase() {
+        ByteBuf buffer;
+        try {
+            buffer = Unpooled.copiedBuffer(FileUtils.readFileToByteArray(new File(this.getClass().getResource("/requests/OverPackageRequest").getFile())));
+        } catch (IOException ex) {
+            LOG.error(ex.getMessage(), ex);
+            return;
+        }
+        AtomicReference<Exception> except = new AtomicReference<Exception>();
+        AtomicReference<Boolean> previouslyClosed = new AtomicReference<Boolean>();
+        previouslyClosed.set(Boolean.FALSE);
+        EmbeddedChannel channel = CodecUtil.createTestableChannel(null, except, previouslyClosed, new RoutingConfig() {
+            @Override
+            public String configureRoutingName() {
+                return "OVERPACKAGE_TEST";
+            }
+
+            @Override
+            public String configurePath() {
+                return "/test/over/package";
+            }
+
+            @Override
+            public HttpMethod[] configureMethods() {
+                return new HttpMethod[]{HttpMethod.GET};
+            }
+
+            @Override
+            public void configurePipeline(ChannelPipeline pipeline) {
+                pipeline.addLast(new ChannelHandlerAdapter() {
+                    @Override
+                    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                        System.out.println(msg);
+                        super.channelRead(ctx, msg);
+                    }
+
+                });
+            }
+        });
+        channel.pipeline().addFirst(new HttpRequestDecoder());
+        channel.writeInbound(buffer);
+        Assert.assertTrue(except.get() instanceof NotFoundException);
+    }
 }

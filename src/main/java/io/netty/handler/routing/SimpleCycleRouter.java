@@ -8,6 +8,7 @@
  */
 package io.netty.handler.routing;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.util.internal.RecyclableArrayList;
@@ -56,8 +57,8 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
     protected void route(ChannelHandlerContext ctx, Object msg, Map<String, ChannelPipeline> routingPipelines) throws Exception {
         if (!ctx.channel().isOpen()) {
             // Assume this occurance should not exists because closed channel should have also closed socket input.
-            LOG.warn(MessageFormat.format("One message is trying to be put in a closed channel: {0}", ctx.channel().id()));
-            return;
+            // And Unexpectedly closed channel should have related error thrown previously.
+            throw new UnableRoutingMessageException("Message is trying to be put in a closed channel", msg);
         }
         RoutingPipeline pipeline;
         if (this.matcherBegin.match(msg)) {

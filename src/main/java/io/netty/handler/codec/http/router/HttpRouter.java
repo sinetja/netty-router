@@ -21,6 +21,7 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderUtil;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
@@ -31,6 +32,7 @@ import io.netty.handler.codec.http.router.exceptions.NotFoundException;
 import io.netty.handler.codec.http.router.exceptions.UnsupportedMethodException;
 import io.netty.handler.routing.RoutingException;
 import io.netty.handler.routing.SimpleCycleRouter;
+import io.netty.handler.routing.UnableRoutingMessageException;
 import io.netty.util.CharsetUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
@@ -95,6 +97,14 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
             super.exceptionForward(cause);
             return;
         } else if (cause instanceof DecoderException && !ctx.channel().isOpen()) {
+            return;
+        } else if (cause instanceof UnableRoutingMessageException && !ctx.channel().isOpen()) {
+            UnableRoutingMessageException exc = (UnableRoutingMessageException) cause;
+            if (!(exc.getRoutingMessage() instanceof HttpObject)) {
+                LOG.warn(MessageFormat.format("Unexpected message[{1}] is trying to be put in a closed channel: {0}", ctx.channel().id(), exc.getRoutingMessage().getClass().getName()));
+                return;
+            }
+            LOG.warn(MessageFormat.format("One http message is trying to be put in a closed channel: {0}", ctx.channel().id()));
             return;
         } else if (!(cause instanceof RoutingException)) {
             LOG.error("Bomb!!!!--Unwrapped exception was throwed:", cause);
