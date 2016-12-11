@@ -1,0 +1,9 @@
+BANKAI /test/over/package HTTP/1.1
+User-Agent: 3.0.1 (Android; SDK 16)
+Content-Length: 110
+Content-Type: application/x-www-form-urlencoded
+Host: example.com
+Connection: Keep-Alive
+
+action=outgoing&version=30&phone_number=&phone_id=&phone_token=&send_limit=100&now=1481118240483&settings_version=0&battery=100&power=1&network=WIFI&log=Error+while+contacting+server%3A+org.apache.http.conn.HttpHostConnectException%3A+Connection+to+http%3A%2F%2F43.252.229.154%3A8080+refused%0A4th+failure%3A+retry+in+1+day%0AChecking+for+messages%0AError+while+contacting+server%3A+org.apache.http.conn.HttpHostConnectException%3A+Connection+to+http%3A%2F%2F43.252.229.154%3A8080+refused%0A%5B%E4%B8%8B%E5%8D%889%3A42%3A00%5D%0AChecking+for+messages%0AError+while+contacting+server%3A+org.apache.http.conn.HttpHostConnectException%3A+Connection+to+http%3A%2F%2F43.252.229.154%3A8080+refused%0A%5B%E4%B8%8B%E5%8D%889%3A43%3A00%5D%0AChecking+for+message
+s%0AError+while+contacting+server%3A+org.apache.http.conn.HttpHostConnectException%3A+Connection+to+http%3A%2F%2F43.252.229.154%3A8080+refused%0A%5B%E4%B8%8B%E5%8D%889%3A44%3A00%5D%0AChecking+for+messages%0A
