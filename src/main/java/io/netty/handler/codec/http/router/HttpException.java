@@ -10,7 +10,6 @@ package io.netty.handler.codec.http.router;
 
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.router.exceptions.NotFoundException;
 
 /**
  * To be used to extending plain exception object with HTTP information.
@@ -45,7 +44,4 @@ public abstract class HttpException extends Exception {
 
     public abstract Routing getMatchedRouting();
 
-    public static HttpException NOT_FOUND(String resourceName, HttpRequest requestmsg) {
-        return new NotFoundException(resourceName, requestmsg);
-    }
 }
