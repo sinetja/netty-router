@@ -8,6 +8,7 @@
  */
 package io.netty.handler.codec.http.router;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
@@ -33,12 +34,15 @@ import io.netty.handler.codec.http.router.testutils.builder.DefaultHttpRequestFa
 import io.netty.handler.codec.http.router.testutils.builder.HttpMessageFactory;
 import io.netty.handler.codec.http.router.testutils.builder.HttpRequestBuilder;
 import io.netty.util.CharsetUtil;
+import java.io.File;
+import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -276,6 +280,30 @@ public class HttpRouterIT {
         Assert.assertTrue(except.get() instanceof UnsupportedMethodException);
         Assert.assertTrue(previouslyClosedChecker.get());
         chunks.clear();
+    }
+
+    @Test
+    public void testUnsupportMethodException() {
+        ByteBuf buffer;
+        try {
+            buffer = Unpooled.copiedBuffer(FileUtils.readFileToByteArray(new File(this.getClass().getResource("/requests/UnsupportedMethodRequest").getFile())));
+        } catch (IOException ex) {
+            LOG.error(ex.getMessage(), ex);
+            return;
+        }
+        AtomicReference<Exception> except = new AtomicReference<Exception>();
+        AtomicReference<Boolean> previouslyClosedChecker = new AtomicReference<Boolean>();
+        List<String> chunks = new ArrayList<String>();
+        EmbeddedChannel channel = CodecUtil.createTestableChannel(chunks, except, previouslyClosedChecker,
+                CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)));
+        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192), new HttpResponseEncoder());
+        System.out.println("EmbeddedChannel: " + channel.id());
+        except.set(null);
+        previouslyClosedChecker.set(Boolean.FALSE);
+        channel.writeInbound(buffer);
+        LOG.info("Channel Outbound Stream: " + CodecUtil.readOutboundString(channel));
+        Assert.assertTrue(except.get() instanceof UnsupportedMethodException);
+        Assert.assertTrue(previouslyClosedChecker.get());
     }
 
 }
