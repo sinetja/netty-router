@@ -69,6 +69,5 @@ In a `Router`, there is another special pipeline for handling exception, allowin
 
 # TODO
 
-* API of Getting matched Routing is unreasonable in HTTPException.
 * Shareable Router Handler.
 * Router list Print support.
