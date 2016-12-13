@@ -169,6 +169,7 @@ class RoutingPathMatcher {
      * @return Returns {@code null} if there is no {@link Pattern} matched in
      * this router.In addtion, the pattern with ":*" would also not be matched
      * in any cases.
+     * @throws IllegalArgumentException
      */
     public String generatePath(String name, Object... params) {
         if (params.length == 0) {
@@ -181,7 +182,7 @@ class RoutingPathMatcher {
             throw new IllegalArgumentException(MessageFormat.format("Missing value for params: {0}", params[params.length - 1]));
         }
         final Map map = new HashMap();
-        for (int i = 0; i < params.length; i++) {
+        for (int i = 0; i < params.length; i += 2) {
             final String key = params[i].toString();
             final String value = params[i + 1].toString();
             map.put(key, value);

@@ -9,6 +9,11 @@
 package io.netty.handler.codec.http.router;
 
 import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.router.testutil.Log4jUtil;
+import io.netty.util.CharsetUtil;
+import java.io.ByteArrayOutputStream;
+import junit.framework.Assert;
+import org.apache.logging.log4j.Level;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -46,14 +51,15 @@ public class RoutingPathMatcherTest {
      */
     @Test
     public void testAdd() {
+        ByteArrayOutputStream result = new ByteArrayOutputStream();
+        Log4jUtil.catchLogMessages(result, Level.ALL);
         System.out.println("add");
-        Routing pattern = null;
-        RoutingPathMatcher instance = new RoutingPathMatcher();
-        RoutingPathMatcher expResult = null;
-        RoutingPathMatcher result = instance.add(pattern);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        RoutingPathMatcher matcher = new RoutingPathMatcher();
+        Routing routing_before_delete = new Routing(new RoutingConfig.SimplePathGet("BEFORE_DELETE", "/before/delete"), HttpMethod.GET);
+        Routing routing_tobe_delete = new Routing(new RoutingConfig.SimplePathGet("BEFORE_DELETE", "/tobe/delete"), HttpMethod.GET);
+        Routing routing_after_delete = new Routing(new RoutingConfig.SimplePathGet("AFTER_DELETE", "/after/delete"), HttpMethod.GET);
+        matcher.add(routing_before_delete).add(routing_tobe_delete).add(routing_after_delete);
+        Assert.assertEquals("There is Routing Override occured in same name: BEFORE_DELETE", new String(result.toByteArray(), CharsetUtil.UTF_8).trim());
     }
 
     /**
@@ -95,14 +101,24 @@ public class RoutingPathMatcherTest {
     @Test
     public void testGeneratePath() {
         System.out.println("generatePath");
-        String name = "";
-        Object[] params = null;
-        RoutingPathMatcher instance = new RoutingPathMatcher();
-        String expResult = "";
-        String result = instance.generatePath(name, params);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        RoutingPathMatcher matcher = new RoutingPathMatcher();
+        Routing plain_path_routing_1 = new Routing(new RoutingConfig.SimplePathGet("plain_path_routing_1", "/tester/plain/get"), HttpMethod.GET);
+        Routing single_var_routing_1 = new Routing(new RoutingConfig.SimplePathGet("single_var_routing_1", "/tester/var/:var1"), HttpMethod.GET);
+        Routing dual_var_routing_1 = new Routing(new RoutingConfig.SimplePathGet("dual_var_routing_1", "/tester/var/:var1/var/:var2"), HttpMethod.GET);
+        matcher.add(plain_path_routing_1).add(single_var_routing_1).add(dual_var_routing_1);
+        assertEquals("/tester/plain/get", matcher.generatePath("plain_path_routing_1"));
+        try {
+            matcher.generatePath("plain_path_routing_1", 123);
+            fail("Miss IllegalArgumentException thrown.");
+        } catch (IllegalArgumentException e) {
+        }
+        assertEquals("/tester/var/123/var/BANKAI", matcher.generatePath("dual_var_routing_1", "var1", 123, "var2", "BANKAI"));
+        try {
+            matcher.generatePath("dual_var_routing_1", "var1", 123, "var2");
+            fail("Miss IllegalArgumentException thrown.");
+        } catch (Exception e) {
+        }
+        assertEquals("/tester/var/123", matcher.generatePath("single_var_routing_1", "var1", 123));
     }
 
 }
