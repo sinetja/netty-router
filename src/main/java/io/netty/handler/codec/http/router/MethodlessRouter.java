@@ -15,8 +15,6 @@
  */
 package io.netty.handler.codec.http.router;
 
-import io.netty.util.internal.StringUtil;
-
 /**
  * Router that contains information about route matching orders, but doesn't
  * contain information about HTTP request methods.
@@ -109,7 +107,7 @@ final class MethodlessRouter<T> {
 
     /** @return {@code null} if no match; note: {@code queryParams} is not set in {@link RouteResult} */
     public RouteResult<T> route(String path) {
-        return route(StringUtil.split(Path.removeSlashesAtBothEnds(path), '/'));
+        return route(Path.removeSlashesAtBothEnds(path).split("/"));
     }
 
     /** @return {@code null} if no match; note: {@code queryParams} is not set in {@link RouteResult} */

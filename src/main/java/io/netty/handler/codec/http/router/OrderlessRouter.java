@@ -17,7 +17,6 @@ package io.netty.handler.codec.http.router;
 
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.util.internal.ObjectUtil;
-import io.netty.util.internal.StringUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
@@ -109,7 +108,7 @@ final class OrderlessRouter<T> {
 
     /** @return {@code null} if no match; note: {@code queryParams} is not set in {@link RouteResult} */
     public RouteResult<T> route(String path) {
-        return route(StringUtil.split(Path.removeSlashesAtBothEnds(path), '/'));
+        return route(Path.removeSlashesAtBothEnds(path).split("/"));
     }
 
     /** @return {@code null} if no match; note: {@code queryParams} is not set in {@link RouteResult} */

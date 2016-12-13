@@ -17,7 +17,6 @@ package io.netty.handler.codec.http.router;
 
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.QueryStringDecoder;
-import io.netty.util.internal.StringUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -254,7 +253,7 @@ public class Router<T> {
      */
     public RouteResult<T> route(HttpMethod method, String uri) {
         QueryStringDecoder decoder = new QueryStringDecoder(uri);
-        String[]           tokens  = StringUtil.split(Path.removeSlashesAtBothEnds(decoder.path()), '/');
+        String[]           tokens  = Path.removeSlashesAtBothEnds(decoder.path()).split("/");
 
         MethodlessRouter<T> router = routers.get(method);
         if (router == null) {
@@ -292,7 +291,7 @@ public class Router<T> {
      */
     public Set<HttpMethod> allowedMethods(String uri) {
         QueryStringDecoder decoder = new QueryStringDecoder(uri);
-        String[]           tokens  = StringUtil.split(Path.removeSlashesAtBothEnds(decoder.path()), '/');
+        String[]           tokens  = Path.removeSlashesAtBothEnds(decoder.path()).split("/");
 
         if (anyMethodRouter.anyMatched(tokens)) {
             return allAllowedMethods();
