@@ -101,14 +101,24 @@ public class RoutingPathMatcherTest {
     @Test
     public void testGeneratePath() {
         System.out.println("generatePath");
-        String name = "";
-        Object[] params = null;
-        RoutingPathMatcher instance = new RoutingPathMatcher();
-        String expResult = "";
-        String result = instance.generatePath(name, params);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        RoutingPathMatcher matcher = new RoutingPathMatcher();
+        Routing plain_path_routing_1 = new Routing(new RoutingConfig.SimplePathGet("plain_path_routing_1", "/tester/plain/get"), HttpMethod.GET);
+        Routing single_var_routing_1 = new Routing(new RoutingConfig.SimplePathGet("single_var_routing_1", "/tester/var/:var1"), HttpMethod.GET);
+        Routing dual_var_routing_1 = new Routing(new RoutingConfig.SimplePathGet("dual_var_routing_1", "/tester/var/:var1/var/:var2"), HttpMethod.GET);
+        matcher.add(plain_path_routing_1).add(single_var_routing_1).add(dual_var_routing_1);
+        assertEquals("/tester/plain/get", matcher.generatePath("plain_path_routing_1"));
+        try {
+            matcher.generatePath("plain_path_routing_1", 123);
+            fail("Miss IllegalArgumentException thrown.");
+        } catch (IllegalArgumentException e) {
+        }
+        assertEquals("/tester/var/123/var/BANKAI", matcher.generatePath("dual_var_routing_1", "var1", 123, "var2", "BANKAI"));
+        try {
+            matcher.generatePath("dual_var_routing_1", "var1", 123, "var2");
+            fail("Miss IllegalArgumentException thrown.");
+        } catch (Exception e) {
+        }
+        assertEquals("/tester/var/123", matcher.generatePath("single_var_routing_1", "var1", 123));
     }
 
 }
