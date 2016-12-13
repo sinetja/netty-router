@@ -9,6 +9,11 @@
 package io.netty.handler.codec.http.router;
 
 import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.router.testutil.Log4jUtil;
+import io.netty.util.CharsetUtil;
+import java.io.ByteArrayOutputStream;
+import junit.framework.Assert;
+import org.apache.logging.log4j.Level;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -46,14 +51,15 @@ public class RoutingPathMatcherTest {
      */
     @Test
     public void testAdd() {
+        ByteArrayOutputStream result = new ByteArrayOutputStream();
+        Log4jUtil.catchLogMessages(result, Level.ALL);
         System.out.println("add");
-        Routing pattern = null;
-        RoutingPathMatcher instance = new RoutingPathMatcher();
-        RoutingPathMatcher expResult = null;
-        RoutingPathMatcher result = instance.add(pattern);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        RoutingPathMatcher matcher = new RoutingPathMatcher();
+        Routing routing_before_delete = new Routing(new RoutingConfig.SimplePathGet("BEFORE_DELETE", "/before/delete"), HttpMethod.GET);
+        Routing routing_tobe_delete = new Routing(new RoutingConfig.SimplePathGet("BEFORE_DELETE", "/tobe/delete"), HttpMethod.GET);
+        Routing routing_after_delete = new Routing(new RoutingConfig.SimplePathGet("AFTER_DELETE", "/after/delete"), HttpMethod.GET);
+        matcher.add(routing_before_delete).add(routing_tobe_delete).add(routing_after_delete);
+        Assert.assertEquals("There is Routing Override occured in same name: BEFORE_DELETE", new String(result.toByteArray(), CharsetUtil.UTF_8).trim());
     }
 
     /**
