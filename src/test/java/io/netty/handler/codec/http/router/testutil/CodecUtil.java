@@ -74,7 +74,13 @@ public class CodecUtil {
         };
     }
 
-    public static EmbeddedChannel createTestableChannel(final List<String> chunks, final AtomicReference<Exception> except, final AtomicReference<Boolean> previouslyClosed, final RoutingConfig... routings) {
+    public static EmbeddedChannel createTestableChannel(final List<String> chunks, final AtomicReference<Throwable> paramExcept, final AtomicReference<Boolean> previouslyClosed, final RoutingConfig... routings) {
+        final AtomicReference<Throwable> except;
+        if (paramExcept == null) {
+            except = new AtomicReference<Throwable>();
+        } else {
+            except = paramExcept;
+        }
         return new EmbeddedChannel(new SimpleChannelInboundHandler<DefaultHttpRequest>() {
             @Override
             protected void messageReceived(ChannelHandlerContext ctx, DefaultHttpRequest msg) throws Exception {
@@ -106,7 +112,7 @@ public class CodecUtil {
 
             @Override
             protected void initExceptionRouting(ChannelPipeline pipeline) {
-                pipeline.addLast(generateExceptionChecker(except, previouslyClosed));
+                pipeline.addLast(generateExceptionChecker(previouslyClosed));
             }
 
             @Override
@@ -121,16 +127,15 @@ public class CodecUtil {
                 LOG.debug(MessageFormat.format("Channel [{0}] is inactived and removed in HttpRouter.", ctx.channel().id()));
             }
 
+            @Override
+            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                except.set(cause);
+                super.exceptionCaught(ctx, cause);
+            }
         });
     }
 
-    private static ChannelHandler generateExceptionChecker(AtomicReference<Exception> paramExcept, AtomicReference<Boolean> paramPreviouslyClosed) {
-        final AtomicReference<Exception> except;
-        if (paramExcept == null) {
-            except = new AtomicReference<Exception>();
-        } else {
-            except = paramExcept;
-        }
+    private static ChannelHandler generateExceptionChecker(AtomicReference<Boolean> paramPreviouslyClosed) {
         final AtomicReference<Boolean> previouslyClosed;
         if (paramPreviouslyClosed == null) {
             previouslyClosed = new AtomicReference<Boolean>();
@@ -142,7 +147,6 @@ public class CodecUtil {
             @Override
             protected void messageReceived(ChannelHandlerContext ctx, HttpException msg) throws Exception {
                 super.messageReceived(ctx, msg);
-                except.set(msg);
                 LOG.debug("EXCEPTIONCAUGHT: channel[" + ctx.channel().id() + "] -- " + msg.toString());
                 if (ctx.channel().isOpen()) {
                     previouslyClosed.set(Boolean.FALSE);
