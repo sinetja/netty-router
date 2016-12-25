@@ -1,0 +1,6 @@
+GET / HTTP/1.1
+Host: localhost:9000
+User-Agent: Minio (windows; amd64) minio-go/2.0.2 mc/2016-12-09T18:23:19Z
+Expect: 100-continue
+Accept-Encoding: gzip
+

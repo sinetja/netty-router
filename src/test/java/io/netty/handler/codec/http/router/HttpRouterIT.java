@@ -13,6 +13,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.ChannelPromise;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
@@ -26,7 +27,6 @@ import io.netty.handler.codec.http.HttpResponseEncoder;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.router.exceptions.BadRequestException;
-import io.netty.handler.codec.http.router.exceptions.NotFoundException;
 import io.netty.handler.codec.http.router.exceptions.UnsupportedMethodException;
 import io.netty.handler.codec.http.router.testutil.CodecUtil;
 import io.netty.handler.codec.http.router.testutil.CheckableRoutingConfig;
@@ -84,7 +84,7 @@ public class HttpRouterIT {
     @Test
     public void testSuccessREST() {
         final Map<String, String> handlerResultChecker = new HashMap<String, String>();
-        AtomicReference<Exception> except = new AtomicReference<Exception>();
+        AtomicReference<Throwable> except = new AtomicReference<Throwable>();
         AtomicReference<Boolean> previouslyClosed = new AtomicReference<Boolean>();
         previouslyClosed.set(Boolean.FALSE);
         EmbeddedChannel channel = CodecUtil.createTestableChannel(null, except, previouslyClosed, new RoutingConfig() {
@@ -188,14 +188,22 @@ public class HttpRouterIT {
 
     @Test
     public void testOverChunksizedRequestWithoutContentLength() {
-        AtomicReference<Exception> except = new AtomicReference<Exception>();
+        final ArrayList<HttpResponse> outputs = new ArrayList<HttpResponse>();
+        AtomicReference<Throwable> except = new AtomicReference<Throwable>();
         AtomicReference<Boolean> previouslyClosedChecker = new AtomicReference<Boolean>();
         List<String> chunks = new ArrayList<String>();
         EmbeddedChannel channel = CodecUtil.createTestableChannel(chunks, except, previouslyClosedChecker,
                 CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)));
-        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192), new HttpResponseEncoder(), new FullResponseLengthFixer());
+        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192), new HttpResponseEncoder(), new ChannelHandlerAdapter() {
+            @Override
+            public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+                outputs.add((HttpResponse) msg);
+                super.write(ctx, msg, promise);
+            }
+
+        }, new FullResponseLengthFixer());
         System.out.println("EmbeddedChannel: " + channel.id());
         HttpRequestBuilder builder = new HttpRequestBuilder(CharsetUtil.UTF_8);
         builder.header(HttpHeaderNames.HOST, "example.com");
@@ -225,7 +233,8 @@ public class HttpRouterIT {
         // a new HTTP request. Apparently, it is impossible to parse 
         // a HTTP request sized as 4096 correctly.
         Assert.assertEquals(2, chunks.size());
-        Assert.assertTrue(except.get() instanceof BadRequestException);
+        Assert.assertEquals(HttpResponseStatus.BAD_REQUEST, outputs.get(0).status());
+        Assert.assertEquals(1, outputs.size());
         Assert.assertTrue(previouslyClosedChecker.get());
         LOG.info("Channel Outbound Stream: " + CodecUtil.readOutboundString(channel));
         chunks.clear();
@@ -233,14 +242,14 @@ public class HttpRouterIT {
 
     @Test
     public void testSmallSizeRequestWithoutContentLength() {
-        AtomicReference<Exception> except = new AtomicReference<Exception>();
+        AtomicReference<Throwable> except = new AtomicReference<Throwable>();
         AtomicReference<Boolean> previouslyClosedChecker = new AtomicReference<Boolean>();
         List<String> chunks = new ArrayList<String>();
         EmbeddedChannel channel = CodecUtil.createTestableChannel(chunks, except, previouslyClosedChecker,
                 CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.SINGLE_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)),
                 CheckableRoutingConfig.DUAL_VAR_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)));
-        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192), new HttpResponseEncoder());
+        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192));
         System.out.println("EmbeddedChannel: " + channel.id());
         HttpRequestBuilder builder = new HttpRequestBuilder(CharsetUtil.UTF_8);
         builder.header(HttpHeaderNames.HOST, "example.com");
@@ -272,14 +281,16 @@ public class HttpRouterIT {
         System.out.println("WRITE INBOUND - 3rd");
         except.set(null);
         previouslyClosedChecker.set(Boolean.FALSE);
+        Assert.assertNull(channel.readOutbound());
         channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory)));
         for (int i = 0; i < chunks.size(); i++) {
             String get = chunks.get(i);
             LOG.info("chunk[" + i + "]: " + get.length());
         }
-        LOG.info("Channel Outbound Stream: " + CodecUtil.readOutboundString(channel));
-        Assert.assertTrue(except.get() instanceof UnsupportedMethodException);
-        Assert.assertTrue(previouslyClosedChecker.get());
+        HttpResponse resp = channel.readOutbound();
+        Assert.assertEquals(HttpResponseStatus.BAD_REQUEST, resp.status());
+        // @TODO: Assert.assertTrue(except.get() instanceof UnsupportedMethodException);
+        Assert.assertTrue("Channel [#" + channel.id() + "] NOT CLOSED.", previouslyClosedChecker.get());
         chunks.clear();
     }
 
@@ -292,7 +303,7 @@ public class HttpRouterIT {
             LOG.error(ex.getMessage(), ex);
             return;
         }
-        AtomicReference<Exception> except = new AtomicReference<Exception>();
+        AtomicReference<Throwable> except = new AtomicReference<Throwable>();
         AtomicReference<Boolean> previouslyClosed = new AtomicReference<Boolean>();
         previouslyClosed.set(Boolean.FALSE);
         EmbeddedChannel channel = CodecUtil.createTestableChannel(null, except, previouslyClosed, new RoutingConfig() {
@@ -325,7 +336,9 @@ public class HttpRouterIT {
         });
         channel.pipeline().addFirst(new HttpRequestDecoder());
         channel.writeInbound(buffer);
-        Assert.assertTrue(except.get() instanceof NotFoundException);
+        FullHttpResponse resp = channel.readOutbound();
+        Assert.assertEquals(HttpResponseStatus.NOT_FOUND, resp.status());
+        Assert.assertNull(channel.readOutbound());
     }
 
     @Test
@@ -337,19 +350,58 @@ public class HttpRouterIT {
             LOG.error(ex.getMessage(), ex);
             return;
         }
-        AtomicReference<Exception> except = new AtomicReference<Exception>();
+        AtomicReference<Throwable> except = new AtomicReference<Throwable>();
         AtomicReference<Boolean> previouslyClosedChecker = new AtomicReference<Boolean>();
         List<String> chunks = new ArrayList<String>();
         EmbeddedChannel channel = CodecUtil.createTestableChannel(chunks, except, previouslyClosedChecker,
                 CheckableRoutingConfig.PLAIN_ROUTING.setChecker(CodecUtil.createHandlerAsRouteChecker(null)));
-        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192), new HttpResponseEncoder());
+        channel.pipeline().addFirst(new HttpRequestDecoder(4096, 8192, 8192));
         System.out.println("EmbeddedChannel: " + channel.id());
         except.set(null);
         previouslyClosedChecker.set(Boolean.FALSE);
         channel.writeInbound(buffer);
-        LOG.info("Channel Outbound Stream: " + CodecUtil.readOutboundString(channel));
-        Assert.assertTrue(except.get() instanceof UnsupportedMethodException);
-        Assert.assertTrue(previouslyClosedChecker.get());
+        HttpResponse resp = channel.readOutbound();
+        Assert.assertEquals(HttpResponseStatus.BAD_REQUEST, resp.status());
+        // @TODO: Assert.assertTrue(except.get() instanceof UnsupportedMethodException);
+        Assert.assertTrue(MessageFormat.format("", channel.id()), previouslyClosedChecker.get());
+    }
+
+    @Test
+    public void test100ContinueGetRequest() {
+        AtomicReference<Throwable> except = new AtomicReference<Throwable>();
+        System.out.println("test100ContinueGetRequest");
+        EmbeddedChannel channel = CodecUtil.createTestableChannel(null, except, null, new RoutingConfig.GET() {
+            @Override
+            public String configureRoutingName() {
+                return "TESTING_GET";
+            }
+
+            @Override
+            public String configurePath() {
+                return "/";
+            }
+
+            @Override
+            public void configurePipeline(ChannelPipeline pipeline) {
+                pipeline.addLast(new ChannelHandlerAdapter() {
+                    @Override
+                    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                        System.out.println(msg);
+                    }
+
+                });
+            }
+        });
+        channel.pipeline().addFirst(new HttpRequestDecoder());
+        ByteBuf buffer;
+        try {
+            buffer = Unpooled.copiedBuffer(FileUtils.readFileToByteArray(new File(this.getClass().getResource("/requests/100ContinueGetRequest").getFile())));
+        } catch (IOException ex) {
+            LOG.error(ex.getMessage(), ex);
+            return;
+        }
+        channel.writeInbound(buffer);
+        Assert.assertNull(except.get());
     }
 
 }

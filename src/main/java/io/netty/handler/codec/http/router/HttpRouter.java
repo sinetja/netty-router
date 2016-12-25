@@ -62,8 +62,16 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
 
     private final ConcurrentMap<HttpRequest, HttpRouted> routedCollection = new ConcurrentHashMap<HttpRequest, HttpRouted>();
 
+    private final HttpResponseStatus config100Continue;
+
     public HttpRouter() {
         super(false, "HttpRouter");
+        this.config100Continue = HttpResponseStatus.CONTINUE;
+    }
+
+    public HttpRouter(HttpResponseStatus config100Continue) {
+        super(false, "HttpRouter");
+        this.config100Continue = config100Continue;
     }
 
     @Override
@@ -212,10 +220,10 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
 
     @Override
     protected void route(ChannelHandlerContext ctx, Object msg, Map<String, ChannelPipeline> routingPipelines) throws Exception {
-        // @TODO To discuss if need to support "Expect: 100- continue" or not
         if (msg instanceof HttpMessage && HttpHeaderUtil.is100ContinueExpected((HttpMessage) msg)) {
-            ctx.writeAndFlush(new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.CONTINUE));
-            return;
+            if (this.config100Continue != null) {
+                ctx.writeAndFlush(new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, this.config100Continue));
+            }
         }
         super.route(ctx, msg, routingPipelines);
     }
