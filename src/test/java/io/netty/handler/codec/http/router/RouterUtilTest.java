@@ -47,6 +47,7 @@ public class RouterUtilTest {
     @Test
     public void testNormalizePath() {
         System.out.println("normalizePath");
+        assertEquals("/bankai", RouterUtil.normalizePath("/bankai"));
         assertEquals("/bankai/", RouterUtil.normalizePath("/bankai/"));
         assertEquals("/bankai/", RouterUtil.normalizePath("//bankai/"));
         assertEquals("/bankai/", RouterUtil.normalizePath("/bankai/////"));
