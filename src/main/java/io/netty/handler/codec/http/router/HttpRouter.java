@@ -68,7 +68,11 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
             FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, httpexc.getResponseCode(), Unpooled.copiedBuffer("Failure: " + httpexc.getMessage() + "\r\n", CharsetUtil.UTF_8));
             response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
             ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
-            LOG.error(MessageFormat.format("Unprocessed WrappedException occured through {0}, with the request-message:{1}", ((HttpException) msg).getMatchedRouting().getName(), this.activeRouted.get(ctx.channel())), (Throwable) msg);
+            if (((HttpException) msg).getHttpRouted() == null) {
+                LOG.error(MessageFormat.format("BOMB!! NO ROUTED Exception occured from matched routing, debug and fix it!! exception message:{0}", ((HttpException) msg).getMessage()), (Throwable) msg);
+            } else {
+                LOG.error(MessageFormat.format("Unprocessed WrappedException occured through {0}, with the request-message:{1}", ((HttpException) msg).getHttpRouted().getPatternName(), ((HttpException) msg).getHttpRequest()), (Throwable) msg);
+            }
             return;
         } else if (msg instanceof Exception) {
             LOG.error((Throwable) msg);
@@ -106,8 +110,8 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
                 }
 
                 @Override
-                public Routing getMatchedRouting() {
-                    throw new UnsupportedOperationException("Not supported for uncached exception.");
+                public io.netty.handler.codec.http.router.HttpRouted getHttpRouted() {
+                    return activeRouted.get(ctx.channel());
                 }
             });
             return;
@@ -124,8 +128,8 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
                 }
 
                 @Override
-                public Routing getMatchedRouting() {
-                    return methodMatcher.PATH_ROUTING_IDENTITIES.get(exc.getRoutingName());
+                public io.netty.handler.codec.http.router.HttpRouted getHttpRouted() {
+                    return activeRouted.get(ctx.channel());
                 }
             });
         }
@@ -150,7 +154,7 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
         for (HttpMethod configureMethod : routingConf.configureMethods()) {
             RoutingPathMatcher matcher;
             if ((matcher = this.methodMatcher.PATH_MATCHERS.get(configureMethod.toString())) == null) {
-                // @TODO is it necessary to throw unsupport method exception?
+                throw new RuntimeException(MessageFormat.format("Method [{0}] is not support in new Routing [{1}].", configureMethod.name(), routingConf.configureRoutingName()));
             } else {
                 Routing routing = new Routing(routingConf, configureMethod);
                 this.newRouting(ctx, routing.getIdentity());
@@ -202,7 +206,7 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
     }
 
     @Override
-    protected final ChannelPipeline routeBegin(ChannelHandlerContext ctx, HttpRequest msg, Map<String, ChannelPipeline> routingPipelines) throws Exception {
+    protected final ChannelPipeline routeBegin(ChannelHandlerContext ctx, final HttpRequest msg, Map<String, ChannelPipeline> routingPipelines) throws Exception {
         if (!msg.decoderResult().isSuccess()) {
             throw new BadRequestException("Request Decoded Failure", msg);
         }
@@ -218,7 +222,13 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
             matched_info = matcher.match(qsd.path());
         }
         if (matched_info == null) {
-            throw new NotFoundException(qsd.path(), msg);
+            throw new NotFoundException(qsd.path(), null) {
+                @Override
+                public HttpRequest getHttpRequest() {
+                    return msg;
+                }
+
+            };
         }
         if (null == this.configuredPipeline.get(ctx.channel()).putIfAbsent(matched_info.getRouting().getIdentity(), matched_info.getRouting())) {
             // Add Handlers
@@ -289,6 +299,9 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
 
         @Override
         public void allow() {
+            if (isDeniedLocked) {
+                throw new RuntimeException("Second Access Permission Change happened!! RequestRouted has been " + (isDenied ? "Denied" : "Allowed") + "previously.");
+            }
             this.isDeniedLocked = true;
             this.isDenied = false;
             super.allow();
@@ -296,6 +309,9 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
 
         @Override
         public void deny() {
+            if (isDeniedLocked) {
+                throw new RuntimeException("Second Access Permission Change happened!! RequestRouted has been " + (isDenied ? "Denied" : "Allowed") + "previously.");
+            }
             this.isDeniedLocked = true;
             this.isDenied = true;
             super.deny();

@@ -9,7 +9,6 @@
 package io.netty.handler.codec.http.router.exceptions;
 
 import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.router.HttpException;
 import io.netty.handler.codec.http.router.HttpRouted;
 
@@ -17,28 +16,23 @@ import io.netty.handler.codec.http.router.HttpRouted;
  *
  * @author Richard Lea <chigix@zoho.com>
  */
-public class BadRequestException extends HttpException {
+public class ForbiddenException extends HttpException {
 
-    private final HttpRequest requestMsg;
+    private final HttpRouted routed;
 
-    public BadRequestException(String message, HttpRequest requestMsg) {
-        super(message);
-        this.requestMsg = requestMsg;
+    public ForbiddenException(String forbiddenReason, HttpRouted routed) {
+        super(forbiddenReason);
+        this.routed = routed;
     }
 
     @Override
-    public final HttpResponseStatus getResponseCode() {
-        return HttpResponseStatus.BAD_REQUEST;
-    }
-
-    @Override
-    public final HttpRequest getHttpRequest() {
-        return this.requestMsg;
+    public HttpRequest getHttpRequest() {
+        return routed.getRequestMsg();
     }
 
     @Override
     public HttpRouted getHttpRouted() {
-        throw new UnsupportedOperationException("Not supported in BadRequest.");
+        return this.routed;
     }
 
 }

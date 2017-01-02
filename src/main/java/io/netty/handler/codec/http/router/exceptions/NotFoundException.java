@@ -11,7 +11,7 @@ package io.netty.handler.codec.http.router.exceptions;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.router.HttpException;
-import io.netty.handler.codec.http.router.Routing;
+import io.netty.handler.codec.http.router.HttpRouted;
 import java.text.MessageFormat;
 
 /**
@@ -27,22 +27,22 @@ public class NotFoundException extends HttpException {
 
     private final String resourceNameToFound;
 
-    private final HttpRequest requestMsg;
+    private final HttpRouted routed;
 
-    public NotFoundException(String resourceNameToFound, HttpRequest requestmsg) {
+    public NotFoundException(String resourceNameToFound, HttpRouted routed_info) {
         super(MessageFormat.format("The resource not found: {0}", resourceNameToFound));
         this.resourceNameToFound = resourceNameToFound;
-        this.requestMsg = requestmsg;
+        routed = routed_info;
     }
 
     @Override
     public HttpRequest getHttpRequest() {
-        return this.requestMsg;
+        return routed.getRequestMsg();
     }
 
     @Override
-    public Routing getMatchedRouting() {
-        throw new UnsupportedOperationException("Not supported in NotFound.");
+    public HttpRouted getHttpRouted() {
+        return routed;
     }
 
 }

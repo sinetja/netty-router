@@ -42,6 +42,6 @@ public abstract class HttpException extends Exception {
 
     public abstract HttpRequest getHttpRequest();
 
-    public abstract Routing getMatchedRouting();
+    public abstract HttpRouted getHttpRouted();
 
 }
