@@ -70,7 +70,7 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
                 LOG.debug(MessageFormat.format("Channel [{0}] is switched to pipeline [{1}].", ctx.channel().id(), pipeline.getPipelineName()));
                 this.activePipeline.set(pipeline);
                 RecyclableArrayList forward_list = RecyclableArrayList.newInstance();
-                this.decode(ctx, (BEGIN) msg, forward_list);
+                this.decode(ctx, msg, forward_list);
                 for (Object forward_out : forward_list) {
                     this.pipelineForward(pipeline, forward_out);
                 }
@@ -83,7 +83,12 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
             pipeline = (RoutingPipeline) this.activePipeline.get();
             if (this.replaceActivePipeline(ctx, pipeline, null)) {
                 this.activePipeline.set(null);
-                this.pipelineForward(pipeline, msg);
+                RecyclableArrayList forward_list = RecyclableArrayList.newInstance();
+                this.decode(ctx, msg, forward_list);
+                for (Object forward_out : forward_list) {
+                    this.pipelineForward(pipeline, forward_out);
+                }
+                forward_list.recycle();
                 LOG.debug(MessageFormat.format("Channel [{0}] is emptied by previous pipeline [{1}] finished.", ctx.channel().id(), pipeline.getPipelineName()));
                 return;
             } else {
@@ -91,7 +96,12 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
             }
         }
         if ((pipeline = (RoutingPipeline) this.activePipeline.get()) != null) {
-            this.pipelineForward(pipeline, msg);
+            RecyclableArrayList forward_list = RecyclableArrayList.newInstance();
+            this.decode(ctx, msg, forward_list);
+            for (Object forward_out : forward_list) {
+                this.pipelineForward(pipeline, forward_out);
+            }
+            forward_list.recycle();
         } else {
             LOG.error(MessageFormat.format("One message occured in an empty routing channel: {0}. "
                     + "Please Check Type Matching required by SimpleCycleRouter in class: {2}",
@@ -108,7 +118,7 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
      * @param out the {@link List} to which decoded messages should be added.
      * @throws Exception is thrown if an error occurs.
      */
-    protected void decode(ChannelHandlerContext ctx, BEGIN in, List<Object> out) throws Exception {
+    protected void decode(ChannelHandlerContext ctx, Object in, List<Object> out) throws Exception {
         out.add(in);
     }
 

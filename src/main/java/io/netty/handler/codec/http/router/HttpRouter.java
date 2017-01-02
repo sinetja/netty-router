@@ -84,11 +84,7 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
             LOG.error(MessageFormat.format("Unprocessed WrappedException occured through {0}, with the request-message:{1}", ((HttpException) msg).getMatchedRouting().getName(), this.activeRouted.get(ctx.channel())), (Throwable) msg);
             return;
         } else if (msg instanceof Exception) {
-            try {
-                throw (Throwable) msg;
-            } catch (Throwable ex) {
-                LOG.error(ex);
-            }
+            LOG.error((Throwable) msg);
         }
         super.write(ctx, msg, promise);
     }
@@ -261,14 +257,18 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
     }
 
     @Override
-    protected void decode(ChannelHandlerContext ctx, HttpRequest in, List<Object> out) throws Exception {
+    protected void decode(ChannelHandlerContext ctx, Object in, List<Object> out) throws Exception {
         HttpRouted routed;
-        if ((routed = this.routedCollection.get(in)) instanceof HttpRouted) {
-            this.routedCollection.remove(in);
-            out.add(routed);
-        } else {
+        if (!(in instanceof HttpRequest)) {
             out.add(in);
+            return;
         }
+        if ((routed = this.routedCollection.get((HttpRequest) in)) instanceof HttpRouted) {
+            this.routedCollection.remove((HttpRequest) in);
+            out.add(routed);
+            return;
+        }
+        throw new Exception("EMERGENCY: HttpRouted object could not be found in HttpRouter decoding. Please fix it firstly.");
     }
 
     private class RoutingIndex {
