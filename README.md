@@ -71,3 +71,4 @@ In a `Router`, there is another special pipeline for handling exception, allowin
 
 * Shareable Router Handler.
 * Router list Print support.
+* CHECK routed info auto removed.
