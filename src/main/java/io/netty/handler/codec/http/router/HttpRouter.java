@@ -271,6 +271,32 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
         throw new Exception("EMERGENCY: HttpRouted object could not be found in HttpRouter decoding. Please fix it firstly.");
     }
 
+    private class HttpRouted extends io.netty.handler.codec.http.router.HttpRouted {
+
+        private final RoutingPathMatched matched;
+
+        public HttpRouted(RoutingPathMatched matched, HttpRequest request) {
+            super(request);
+            this.matched = matched;
+        }
+
+        @Override
+        public Map<String, Object> decodedParams() {
+            return matched.decodedParams();
+        }
+
+        @Override
+        public RoutingConfig unwrapRoutingConf() {
+            return matched.getRouting().unwrap();
+        }
+
+        @Override
+        public String getPatternName() {
+            return matched.getRouting().getName();
+        }
+
+    }
+
     private class RoutingIndex {
 
         public final Map<String, RoutingPathMatcher> PATH_MATCHERS = new HashMap<String, RoutingPathMatcher>();

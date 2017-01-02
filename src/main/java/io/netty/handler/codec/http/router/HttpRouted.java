@@ -16,32 +16,23 @@ import java.util.Map;
  *
  * @author Richard Lea <chigix@zoho.com>
  */
-public class HttpRouted {
-
-    private final RoutingPathMatched pathMatched;
+public abstract class HttpRouted {
 
     private final HttpRequest requestMsg;
 
-    public HttpRouted(RoutingPathMatched matched, HttpRequest request) {
-        this.pathMatched = matched;
+    public HttpRouted(HttpRequest request) {
         this.requestMsg = request;
     }
 
-    public Map<String, Object> decodedParams() {
-        return this.pathMatched.decodedParams();
-    }
+    public abstract Map<String, Object> decodedParams();
 
     public HttpRequest getRequestMsg() {
         return requestMsg;
     }
 
-    public RoutingConfig unwrapRoutingConf() {
-        return this.pathMatched.getRouting().unwrap();
-    }
+    public abstract RoutingConfig unwrapRoutingConf();
 
-    public String getPatternName() {
-        return this.pathMatched.getRouting().getName();
-    }
+    public abstract String getPatternName();
 
     @Override
     public String toString() {
