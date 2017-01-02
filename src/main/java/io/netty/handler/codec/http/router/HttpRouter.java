@@ -18,12 +18,9 @@ import io.netty.handler.codec.DecoderException;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaderUtil;
-import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.codec.http.QueryStringDecoder;
@@ -51,27 +48,17 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
 
     private static final InternalLogger LOG = InternalLoggerFactory.getInstance(HttpRouter.class);
 
-    private final RoutingIndex matcherIndex = new RoutingIndex();
+    private final RoutingIndex methodMatcher = new RoutingIndex();
 
     /**
-     * @TODO test the remove time schedule.
+     * @TODO test the remove time schedule when channel inactived.
      */
-    private final Map<Channel, ActiveRoutedEntry> activeRouted = new HashMap<Channel, ActiveRoutedEntry>();
+    private final Map<Channel, HttpRouted> activeRouted = new HashMap<Channel, HttpRouted>();
 
     private final ConcurrentMap<Channel, ConcurrentMap<String, Routing>> configuredPipeline = new ConcurrentHashMap<Channel, ConcurrentMap<String, Routing>>();
 
-    private final ConcurrentMap<HttpRequest, HttpRouted> routedCollection = new ConcurrentHashMap<HttpRequest, HttpRouted>();
-
-    private final HttpResponseStatus config100Continue;
-
     public HttpRouter() {
         super(false, "HttpRouter");
-        this.config100Continue = HttpResponseStatus.CONTINUE;
-    }
-
-    public HttpRouter(HttpResponseStatus config100Continue) {
-        super(false, "HttpRouter");
-        this.config100Continue = config100Continue;
     }
 
     @Override
@@ -115,7 +102,7 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
             super.exceptionForward(new HttpException(cause) {
                 @Override
                 public HttpRequest getHttpRequest() {
-                    return activeRouted.get(ctx.channel()).getMessage();
+                    return activeRouted.get(ctx.channel()).getRequestMsg();
                 }
 
                 @Override
@@ -133,12 +120,12 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
 
                 @Override
                 public HttpRequest getHttpRequest() {
-                    return activeRouted.get(ctx.channel()).getMessage();
+                    return activeRouted.get(ctx.channel()).getRequestMsg();
                 }
 
                 @Override
                 public Routing getMatchedRouting() {
-                    return matcherIndex.ROUTING_IDENTITIES.get(exc.getRoutingName());
+                    return methodMatcher.PATH_ROUTING_IDENTITIES.get(exc.getRoutingName());
                 }
             });
         }
@@ -162,13 +149,13 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
     protected void newRouting(ChannelHandlerContext ctx, RoutingConfig routingConf) {
         for (HttpMethod configureMethod : routingConf.configureMethods()) {
             RoutingPathMatcher matcher;
-            if ((matcher = this.matcherIndex.PATH_MATCHERS.get(configureMethod.toString())) == null) {
+            if ((matcher = this.methodMatcher.PATH_MATCHERS.get(configureMethod.toString())) == null) {
                 // @TODO is it necessary to throw unsupport method exception?
             } else {
                 Routing routing = new Routing(routingConf, configureMethod);
                 this.newRouting(ctx, routing.getIdentity());
                 matcher.add(routing);
-                this.matcherIndex.ROUTING_IDENTITIES.put(routing.getIdentity(), routing);
+                this.methodMatcher.PATH_ROUTING_IDENTITIES.put(routing.getIdentity(), routing);
             }
         }
     }
@@ -215,40 +202,30 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
     }
 
     @Override
-    protected void route(ChannelHandlerContext ctx, Object msg, Map<String, ChannelPipeline> routingPipelines) throws Exception {
-        if (msg instanceof HttpMessage && HttpHeaderUtil.is100ContinueExpected((HttpMessage) msg)) {
-            if (this.config100Continue != null) {
-                ctx.writeAndFlush(new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, this.config100Continue));
-            }
-        }
-        super.route(ctx, msg, routingPipelines);
-    }
-
-    @Override
     protected final ChannelPipeline routeBegin(ChannelHandlerContext ctx, HttpRequest msg, Map<String, ChannelPipeline> routingPipelines) throws Exception {
         if (!msg.decoderResult().isSuccess()) {
             throw new BadRequestException("Request Decoded Failure", msg);
         }
-        this.activeRouted.put(ctx.channel(), new ActiveRoutedEntry(null, msg));
         // Route
         final QueryStringDecoder qsd = new QueryStringDecoder(msg.uri());
         final RoutingPathMatcher matcher;
-        final RoutingPathMatched routed;
-        if ((matcher = this.matcherIndex.PATH_MATCHERS.get(msg.method().toString())) == null) {
+        final RoutingPathMatched matched_info;
+        // PATH_MATCHER is only featured with comparing path, 
+        // so method support have to be checked here.
+        if ((matcher = this.methodMatcher.PATH_MATCHERS.get(msg.method().toString())) == null) {
             throw new UnsupportedMethodException(msg);
         } else {
-            routed = matcher.match(qsd.path());
+            matched_info = matcher.match(qsd.path());
         }
-        if (routed == null) {
+        if (matched_info == null) {
             throw new NotFoundException(qsd.path(), msg);
         }
-        this.activeRouted.put(ctx.channel(), new ActiveRoutedEntry(routed.getRouting(), msg));
-        if (null == this.configuredPipeline.get(ctx.channel()).putIfAbsent(routed.getRouting().getIdentity(), routed.getRouting())) {
+        if (null == this.configuredPipeline.get(ctx.channel()).putIfAbsent(matched_info.getRouting().getIdentity(), matched_info.getRouting())) {
             // Add Handlers
-            routed.getRouting().unwrap().configurePipeline(routingPipelines.get(routed.getRouting().getIdentity()));
+            matched_info.getRouting().unwrap().configurePipeline(routingPipelines.get(matched_info.getRouting().getIdentity()));
         }
-        this.routedCollection.put(msg, new HttpRouted(routed, msg));
-        return routingPipelines.get(routed.getRouting().getIdentity());
+        this.activeRouted.put(ctx.channel(), new HttpRouted(matched_info, msg, ctx));
+        return routingPipelines.get(matched_info.getRouting().getIdentity());
     }
 
     @Override
@@ -258,26 +235,41 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
 
     @Override
     protected void decode(ChannelHandlerContext ctx, Object in, List<Object> out) throws Exception {
-        HttpRouted routed;
+        HttpRouted routed = activeRouted.get(ctx.channel());
+        if (this.activeRouted.get(ctx.channel()) == null) {
+            throw new Exception("EMERGENCY: HttpRouted object could not be found in HttpRouter decoding. Please fix it firstly.");
+        }
         if (!(in instanceof HttpRequest)) {
-            out.add(in);
+            if (!routed.isDenied) {
+                out.add(in);
+            }
             return;
         }
-        if ((routed = this.routedCollection.get((HttpRequest) in)) instanceof HttpRouted) {
-            this.routedCollection.remove((HttpRequest) in);
+        if (in == routed.getRequestMsg()) {
             out.add(routed);
             return;
         }
-        throw new Exception("EMERGENCY: HttpRouted object could not be found in HttpRouter decoding. Please fix it firstly.");
+        throw new Exception("EMERGENCY: Previous HttpRouted info is being used, however next HttpRequest message have been received.");
     }
 
+    /**
+     * A aggregator with HttpRequest message, ChannelHandlerContext and Routing
+     * info.
+     */
     private class HttpRouted extends io.netty.handler.codec.http.router.HttpRouted {
 
         private final RoutingPathMatched matched;
 
-        public HttpRouted(RoutingPathMatched matched, HttpRequest request) {
+        private final ChannelHandlerContext ctx;
+
+        private boolean isDeniedLocked = false;
+
+        private boolean isDenied = false;
+
+        public HttpRouted(RoutingPathMatched matched, HttpRequest request, ChannelHandlerContext ctx) {
             super(request);
             this.matched = matched;
+            this.ctx = ctx;
         }
 
         @Override
@@ -295,13 +287,32 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
             return matched.getRouting().getName();
         }
 
+        @Override
+        public void allow() {
+            this.isDeniedLocked = true;
+            this.isDenied = false;
+            super.allow();
+        }
+
+        @Override
+        public void deny() {
+            this.isDeniedLocked = true;
+            this.isDenied = true;
+            super.deny();
+        }
+
+        @Override
+        public ChannelHandlerContext getChannelHandlerContext() {
+            return this.ctx;
+        }
+
     }
 
     private class RoutingIndex {
 
         public final Map<String, RoutingPathMatcher> PATH_MATCHERS = new HashMap<String, RoutingPathMatcher>();
 
-        public final Map<String, Routing> ROUTING_IDENTITIES = new HashMap<String, Routing>();
+        public final Map<String, Routing> PATH_ROUTING_IDENTITIES = new HashMap<String, Routing>();
 
         public RoutingIndex() {
             PATH_MATCHERS.put(HttpMethod.CONNECT.toString(), new RoutingPathMatcher());
@@ -313,26 +324,6 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
             PATH_MATCHERS.put(HttpMethod.POST.toString(), new RoutingPathMatcher());
             PATH_MATCHERS.put(HttpMethod.PUT.toString(), new RoutingPathMatcher());
             PATH_MATCHERS.put(HttpMethod.TRACE.toString(), new RoutingPathMatcher());
-        }
-
-    }
-
-    private class ActiveRoutedEntry {
-
-        private final Routing pattern;
-        private final HttpRequest message;
-
-        public ActiveRoutedEntry(Routing pattern, HttpRequest message) {
-            this.pattern = pattern;
-            this.message = message;
-        }
-
-        public Routing getRouting() {
-            return pattern;
-        }
-
-        public HttpRequest getMessage() {
-            return message;
         }
 
     }
