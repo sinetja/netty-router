@@ -9,6 +9,7 @@
 package io.netty.handler.codec.http.router.exceptions;
 
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.router.HttpException;
 import io.netty.handler.codec.http.router.HttpRouted;
 
@@ -23,6 +24,11 @@ public class ForbiddenException extends HttpException {
     public ForbiddenException(String forbiddenReason, HttpRouted routed) {
         super(forbiddenReason);
         this.routed = routed;
+    }
+
+    @Override
+    public HttpResponseStatus getResponseCode() {
+        return HttpResponseStatus.FORBIDDEN;
     }
 
     @Override

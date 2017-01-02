@@ -17,6 +17,7 @@ import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.router.exceptions.BadRequestException;
+import io.netty.handler.codec.http.router.exceptions.ForbiddenException;
 import io.netty.handler.codec.http.router.exceptions.NotFoundException;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
@@ -81,6 +82,17 @@ public class SimpleHttpExceptionHandler extends SimpleChannelInboundHandler<Http
         appendContent(outputContent, "<h1>404 Not Found</h1>\n");
         appendContent(outputContent, "<p>Your browser sent a request that this server could not understand.</p>\n");
         appendContent(outputContent, "<p>Sorry for the inconvenience.</p>\n");
+        appendContent(outputContent, "<hr><center>Netty Server</center>\n");
+        appendContent(outputContent, "</body></html>\n");
+    }
+
+    protected void exceptForbidden(ForbiddenException inputMessage, HttpHeaders outputHeaders, ByteBuf outputContent) {
+        outputHeaders.set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
+        appendContent(outputContent, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n");
+        appendContent(outputContent, "<html>\n");
+        appendContent(outputContent, "<head><title>403 Forbidden</title></head>\n");
+        appendContent(outputContent, "<body bgcolor=\"white\">\n");
+        appendContent(outputContent, "<center><h1>" + inputMessage.getMessage() + "</h1></center>\n");
         appendContent(outputContent, "<hr><center>Netty Server</center>\n");
         appendContent(outputContent, "</body></html>\n");
     }
