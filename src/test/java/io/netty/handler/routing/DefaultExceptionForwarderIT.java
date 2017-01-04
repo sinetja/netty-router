@@ -17,18 +17,18 @@ import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpRequestDecoder;
-import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
-import io.netty.handler.codec.http.router.HttpException;
 import io.netty.handler.codec.http.router.HttpRouted;
 import io.netty.handler.codec.http.router.RoutingConfig;
 import io.netty.handler.codec.http.router.testutil.CodecUtil;
+import io.netty.handler.codec.http.router.testutil.SnapshotHttpException;
 import io.netty.handler.codec.http.router.testutils.builder.DefaultHttpRequestFactory;
 import io.netty.handler.codec.http.router.testutils.builder.HttpMessageFactory;
 import io.netty.handler.codec.http.router.testutils.builder.HttpRequestBuilder;
 import io.netty.util.CharsetUtil;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -52,10 +52,8 @@ public class DefaultExceptionForwarderIT {
         builder.header(HttpHeaderNames.CONTENT_LENGTH, "500");
         builder.uri("/test/exception");
         HttpMessageFactory factory = new DefaultHttpRequestFactory(HttpVersion.HTTP_1_1, HttpMethod.POST, RandomStringUtils.randomAlphanumeric(500).getBytes());
-        AtomicReference<Throwable> except = new AtomicReference<Throwable>();
-        AtomicReference<Boolean> previouslyClosed = new AtomicReference<Boolean>();
-        previouslyClosed.set(Boolean.FALSE);
-        EmbeddedChannel channel = CodecUtil.createTestableChannel(null, except, previouslyClosed, new RoutingConfig() {
+        List<SnapshotHttpException> exceptions = new ArrayList<SnapshotHttpException>();
+        EmbeddedChannel channel = CodecUtil.createTestableChannel(null, exceptions, new RoutingConfig() {
             @Override
             public String configureRoutingName() {
                 return "EXCEPTION THROW TEST";
@@ -83,11 +81,10 @@ public class DefaultExceptionForwarderIT {
         });
         channel.pipeline().addFirst(new HttpRequestDecoder());
         channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory)));
-        HttpResponse resp = channel.readOutbound();
-        Assert.assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR, resp.status());
-//      @TODO:   Assert.assertTrue(except.get() instanceof HttpException);
-//        HttpException exc = (HttpException) except.get();
-//        Assert.assertSame(toThrow, exc.getCause());
+        Assert.assertTrue(exceptions.size() > 0);
+        Assert.assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR, exceptions.get(0).getSnapshoted().getResponseCode());
+        System.out.println(exceptions.get(0).getSnapshoted().getResponseCode());
+        Assert.assertSame(toThrow, exceptions.get(0).getCause());
     }
 
     @Test

@@ -23,7 +23,6 @@ import io.netty.handler.codec.http.router.HttpRouted;
 import io.netty.handler.codec.http.router.HttpRouter;
 import io.netty.handler.codec.http.router.HttpRouterIT;
 import io.netty.handler.codec.http.router.RoutingConfig;
-import io.netty.handler.codec.http.router.SimpleHttpExceptionHandler;
 import io.netty.util.CharsetUtil;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -74,18 +73,18 @@ public class CodecUtil {
         };
     }
 
-    public static EmbeddedChannel createTestableChannel(final List<String> chunks, final AtomicReference<Throwable> paramExcept, final AtomicReference<Boolean> previouslyClosed, final RoutingConfig... routings) {
-        final AtomicReference<Throwable> except;
-        if (paramExcept == null) {
-            except = new AtomicReference<Throwable>();
+    public static EmbeddedChannel createTestableChannel(final List<String> receivedChunks, final List<SnapshotHttpException> exceptStack, final RoutingConfig... routings) {
+        final List<SnapshotHttpException> excepts;
+        if (exceptStack == null) {
+            excepts = new ArrayList<SnapshotHttpException>();
         } else {
-            except = paramExcept;
+            excepts = exceptStack;
         }
         return new EmbeddedChannel(new SimpleChannelInboundHandler<DefaultHttpRequest>() {
             @Override
             protected void messageReceived(ChannelHandlerContext ctx, DefaultHttpRequest msg) throws Exception {
-                if (chunks != null) {
-                    chunks.add(msg.toString());
+                if (receivedChunks != null) {
+                    receivedChunks.add(msg.toString());
                 }
                 ctx.fireChannelRead(msg);
             }
@@ -97,8 +96,8 @@ public class CodecUtil {
                 for (int i = 0; i < bytes.length; i++) {
                     bytes[i] = data.readByte();
                 }
-                if (chunks != null) {
-                    chunks.add(new String(bytes, CharsetUtil.UTF_8));
+                if (receivedChunks != null) {
+                    receivedChunks.add(new String(bytes, CharsetUtil.UTF_8));
                 }
                 ctx.fireChannelRead(msg.copy());
             }
@@ -112,7 +111,29 @@ public class CodecUtil {
 
             @Override
             protected void initExceptionRouting(ChannelPipeline pipeline) {
-                pipeline.addLast(generateExceptionChecker(previouslyClosed));
+                pipeline.addLast(new UnwrappedExceptionHandler() {
+                    @Override
+                    protected void reportException(ChannelHandlerContext ctx, HttpException httpexc) {
+                        final boolean isPreviouslyClosed = !ctx.channel().isOpen();
+                        excepts.add(new SnapshotHttpException(httpexc.getCause(), httpexc) {
+                            @Override
+                            public boolean isChannelClosed() {
+                                return isPreviouslyClosed;
+                            }
+                        });
+                    }
+                }).addLast(new SimpleChannelInboundHandler<HttpException>() {
+                    @Override
+                    protected void messageReceived(ChannelHandlerContext ctx, HttpException msg) throws Exception {
+                        final boolean isPreviouslyClosed = !ctx.channel().isOpen();
+                        excepts.add(new SnapshotHttpException(msg, msg) {
+                            @Override
+                            public boolean isChannelClosed() {
+                                return isPreviouslyClosed;
+                            }
+                        });
+                    }
+                });
             }
 
             @Override
@@ -129,34 +150,10 @@ public class CodecUtil {
 
             @Override
             public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-                except.set(cause);
+                LOG.debug("EXCEPTIONCAUGHT: channel[{}] -- [{}] {}", ctx.channel().id(), cause.getClass().toString(), cause.getMessage());
                 super.exceptionCaught(ctx, cause);
             }
         });
-    }
-
-    private static ChannelHandler generateExceptionChecker(AtomicReference<Boolean> paramPreviouslyClosed) {
-        final AtomicReference<Boolean> previouslyClosed;
-        if (paramPreviouslyClosed == null) {
-            previouslyClosed = new AtomicReference<Boolean>();
-        } else {
-            previouslyClosed = paramPreviouslyClosed;
-        }
-        return new SimpleHttpExceptionHandler() {
-
-            @Override
-            protected void messageReceived(ChannelHandlerContext ctx, HttpException msg) throws Exception {
-                super.messageReceived(ctx, msg);
-                LOG.debug("EXCEPTIONCAUGHT: channel[" + ctx.channel().id() + "] -- " + msg.toString());
-                if (ctx.channel().isOpen()) {
-                    previouslyClosed.set(Boolean.FALSE);
-                    LOG.warn("Channel [" + ctx.channel().id() + "] haven't been closed.");
-                } else {
-                    previouslyClosed.set(Boolean.TRUE);
-                    LOG.debug("Channel [" + ctx.channel().id() + "] has been closed before exception caught.");
-                }
-            }
-        };
     }
 
     public static final String readOutboundString(EmbeddedChannel channel) {
@@ -175,6 +172,31 @@ public class CodecUtil {
             return null;
         } else {
             return sb.toString();
+        }
+    }
+
+    private static abstract class UnwrappedExceptionHandler extends io.netty.handler.codec.http.router.UnwrappedExceptionHandler {
+
+        protected abstract void reportException(ChannelHandlerContext ctx, HttpException httpexc);
+
+        @Override
+        protected void handleDecoderException(ChannelHandlerContext ctx, HttpException httpexc) {
+            reportException(ctx, httpexc);
+        }
+
+        @Override
+        protected void handleRoutingException(ChannelHandlerContext ctx, HttpException httpexc) {
+            reportException(ctx, httpexc);
+        }
+
+        @Override
+        protected void handleUnableRouting(ChannelHandlerContext ctx, HttpException httpexc) {
+            reportException(ctx, httpexc);
+        }
+
+        @Override
+        protected void handleUnwrappedException(ChannelHandlerContext ctx, HttpException httpexc) {
+            reportException(ctx, httpexc);
         }
     }
 
