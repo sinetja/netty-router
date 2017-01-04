@@ -23,7 +23,7 @@ public abstract class HttpException extends Exception {
     }
 
     public HttpException(Throwable cause) {
-        super(cause);
+        super(cause.getMessage(), cause);
     }
 
     public HttpResponseStatus getResponseCode() {

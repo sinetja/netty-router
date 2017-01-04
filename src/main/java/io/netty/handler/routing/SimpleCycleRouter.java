@@ -81,6 +81,10 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
             }
         } else if (this.matcherEnd.match(msg) && this.routeEnd(ctx, (END) msg)) {
             pipeline = (RoutingPipeline) this.activePipeline.get();
+            if (pipeline == null) {
+                LOG.warn(MessageFormat.format("No RoutingPipeline in channel [{0}], it is suggested to throw exception before this warning.", ctx.channel().id()));
+                return;
+            }
             if (this.replaceActivePipeline(ctx, pipeline, null)) {
                 this.activePipeline.set(null);
                 RecyclableArrayList forward_list = RecyclableArrayList.newInstance();

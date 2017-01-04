@@ -22,6 +22,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -118,8 +120,20 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addFirst(String name, ChannelHandler handler) {
+        final ChannelHandler current_handler = handler;
         if (handler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        } else if (handler instanceof InternalForwardable) {
+            ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         this.parentPipeline.addAfter(this.start.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
@@ -127,8 +141,20 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addFirst(EventExecutorGroup group, String name, ChannelHandler handler) {
+        final ChannelHandler current_handler = handler;
         if (handler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        } else if (handler instanceof InternalForwardable) {
+            ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         this.parentPipeline.addAfter(group, this.start.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
@@ -136,8 +162,20 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addFirst(ChannelHandlerInvoker invoker, String name, ChannelHandler handler) {
+        final ChannelHandler current_handler = handler;
         if (handler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        } else if (handler instanceof InternalForwardable) {
+            ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         this.parentPipeline.addAfter(invoker, this.start.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
@@ -145,8 +183,20 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addLast(String name, ChannelHandler handler) {
+        final ChannelHandler current_handler = handler;
         if (handler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        } else if (handler instanceof InternalForwardable) {
+            ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         this.parentPipeline.addBefore(this.end.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
@@ -154,8 +204,20 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addLast(EventExecutorGroup group, String name, ChannelHandler handler) {
+        final ChannelHandler current_handler = handler;
         if (handler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        } else if (handler instanceof InternalForwardable) {
+            ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         this.parentPipeline.addBefore(group, this.end.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
@@ -163,8 +225,20 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addLast(ChannelHandlerInvoker invoker, String name, ChannelHandler handler) {
+        final ChannelHandler current_handler = handler;
         if (handler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        } else if (handler instanceof InternalForwardable) {
+            ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         this.parentPipeline.addBefore(invoker, this.end.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
@@ -172,8 +246,20 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addBefore(String baseName, String name, ChannelHandler handler) {
+        final ChannelHandler current_handler = handler;
         if (handler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        } else if (handler instanceof InternalForwardable) {
+            ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         this.parentPipeline.addBefore(this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
@@ -181,8 +267,20 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addBefore(EventExecutorGroup group, String baseName, String name, ChannelHandler handler) {
+        final ChannelHandler current_handler = handler;
         if (handler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        } else if (handler instanceof InternalForwardable) {
+            ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         this.parentPipeline.addBefore(group, this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
@@ -190,8 +288,20 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addBefore(ChannelHandlerInvoker invoker, String baseName, String name, ChannelHandler handler) {
+        final ChannelHandler current_handler = handler;
         if (handler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        } else if (handler instanceof InternalForwardable) {
+            ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         this.parentPipeline.addBefore(invoker, this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
@@ -199,8 +309,20 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addAfter(String baseName, String name, ChannelHandler handler) {
+        final ChannelHandler current_handler = handler;
         if (handler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        } else if (handler instanceof InternalForwardable) {
+            ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         this.parentPipeline.addAfter(this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
@@ -208,8 +330,20 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addAfter(EventExecutorGroup group, String baseName, String name, ChannelHandler handler) {
+        final ChannelHandler current_handler = handler;
         if (handler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        } else if (handler instanceof InternalForwardable) {
+            ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         this.parentPipeline.addAfter(group, this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
@@ -217,8 +351,20 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addAfter(ChannelHandlerInvoker invoker, String baseName, String name, ChannelHandler handler) {
+        final ChannelHandler current_handler = handler;
         if (handler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+        } else if (handler instanceof InternalForwardable) {
+            ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         this.parentPipeline.addAfter(invoker, this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
@@ -227,8 +373,20 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addFirst(ChannelHandler... handlers) {
         for (int i = handlers.length - 1; i > 0; i--) {
+            final ChannelHandler current_handler = handlers[i];
             if (handlers[i] instanceof PackageDependencyAware) {
                 ((PackageDependencyAware) handlers[i]).setParentRoutingPipeline(this);
+            } else if (handlers[i] instanceof InternalForwardable) {
+                ((InternalForwardable) handlers[i]).setForwarder(new Forwarder() {
+                    @Override
+                    public void forward(ChannelHandlerContext ctx, Object msg) {
+                        try {
+                            current_handler.channelRead(ctx, msg);
+                        } catch (Exception ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                });
             }
             this.parentPipeline.addAfter(this.getStart().getAnchorName(), null, handlers[i]);
         }
@@ -238,8 +396,20 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addFirst(EventExecutorGroup group, ChannelHandler... handlers) {
         for (int i = handlers.length - 1; i > 0; i--) {
+            final ChannelHandler current_handler = handlers[i];
             if (handlers[i] instanceof PackageDependencyAware) {
                 ((PackageDependencyAware) handlers[i]).setParentRoutingPipeline(this);
+            } else if (handlers[i] instanceof InternalForwardable) {
+                ((InternalForwardable) handlers[i]).setForwarder(new Forwarder() {
+                    @Override
+                    public void forward(ChannelHandlerContext ctx, Object msg) {
+                        try {
+                            current_handler.channelRead(ctx, msg);
+                        } catch (Exception ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                });
             }
             this.parentPipeline.addAfter(group, this.getStart().getAnchorName(), null, handlers[i]);
         }
@@ -249,8 +419,20 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addFirst(ChannelHandlerInvoker invoker, ChannelHandler... handlers) {
         for (int i = handlers.length - 1; i > 0; i--) {
+            final ChannelHandler current_handler = handlers[i];
             if (handlers[i] instanceof PackageDependencyAware) {
                 ((PackageDependencyAware) handlers[i]).setParentRoutingPipeline(this);
+            } else if (handlers[i] instanceof InternalForwardable) {
+                ((InternalForwardable) handlers[i]).setForwarder(new Forwarder() {
+                    @Override
+                    public void forward(ChannelHandlerContext ctx, Object msg) {
+                        try {
+                            current_handler.channelRead(ctx, msg);
+                        } catch (Exception ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                });
             }
             this.parentPipeline.addAfter(invoker, this.getStart().getAnchorName(), null, handlers[i]);
         }
@@ -260,8 +442,20 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addLast(ChannelHandler... handlers) {
         for (ChannelHandler handler : handlers) {
+            final ChannelHandler current_handler = handler;
             if (handler instanceof PackageDependencyAware) {
                 ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+            } else if (handler instanceof InternalForwardable) {
+                ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                    @Override
+                    public void forward(ChannelHandlerContext ctx, Object msg) {
+                        try {
+                            current_handler.channelRead(ctx, msg);
+                        } catch (Exception ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                });
             }
             this.parentPipeline.addBefore(this.getEnd().getAnchorName(), null, handler);
         }
@@ -271,8 +465,20 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addLast(EventExecutorGroup group, ChannelHandler... handlers) {
         for (ChannelHandler handler : handlers) {
+            final ChannelHandler current_handler = handler;
             if (handler instanceof PackageDependencyAware) {
                 ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+            } else if (handler instanceof InternalForwardable) {
+                ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                    @Override
+                    public void forward(ChannelHandlerContext ctx, Object msg) {
+                        try {
+                            current_handler.channelRead(ctx, msg);
+                        } catch (Exception ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                });
             }
             this.parentPipeline.addBefore(group, this.getEnd().getAnchorName(), null, handler);
         }
@@ -282,8 +488,20 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addLast(ChannelHandlerInvoker invoker, ChannelHandler... handlers) {
         for (ChannelHandler handler : handlers) {
+            final ChannelHandler current_handler = handler;
             if (handler instanceof PackageDependencyAware) {
                 ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
+            } else if (handler instanceof InternalForwardable) {
+                ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                    @Override
+                    public void forward(ChannelHandlerContext ctx, Object msg) {
+                        try {
+                            current_handler.channelRead(ctx, msg);
+                        } catch (Exception ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                });
             }
             this.parentPipeline.addBefore(invoker, this.getEnd().getAnchorName(), null, handler);
         }
@@ -318,8 +536,20 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline replace(ChannelHandler oldHandler, String newName, ChannelHandler newHandler) {
+        final ChannelHandler current_handler = newHandler;
         if (newHandler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) newHandler).setParentRoutingPipeline(this);
+        } else if (newHandler instanceof InternalForwardable) {
+            ((InternalForwardable) newHandler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         this.parentPipeline.replace(oldHandler, this.handlerNameFormatter(newName), newHandler);
         return this;
@@ -327,16 +557,40 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelHandler replace(String oldName, String newName, ChannelHandler newHandler) {
+        final ChannelHandler current_handler = newHandler;
         if (newHandler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) newHandler).setParentRoutingPipeline(this);
+        } else if (newHandler instanceof InternalForwardable) {
+            ((InternalForwardable) newHandler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         return this.parentPipeline.replace(this.handlerNameFormatter(oldName), this.handlerNameFormatter(newName), newHandler);
     }
 
     @Override
     public <T extends ChannelHandler> T replace(Class<T> oldHandlerType, String newName, ChannelHandler newHandler) {
+        final ChannelHandler current_handler = newHandler;
         if (newHandler instanceof PackageDependencyAware) {
             ((PackageDependencyAware) newHandler).setParentRoutingPipeline(this);
+        } else if (newHandler instanceof InternalForwardable) {
+            ((InternalForwardable) newHandler).setForwarder(new Forwarder() {
+                @Override
+                public void forward(ChannelHandlerContext ctx, Object msg) {
+                    try {
+                        current_handler.channelRead(ctx, msg);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
         }
         return this.parentPipeline.replace(oldHandlerType, this.handlerNameFormatter(newName), newHandler);
     }

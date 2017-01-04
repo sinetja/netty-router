@@ -18,6 +18,7 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.router.exceptions.BadRequestException;
 import io.netty.handler.codec.http.router.exceptions.ForbiddenException;
+import io.netty.handler.codec.http.router.exceptions.LastNotFoundException;
 import io.netty.handler.codec.http.router.exceptions.NotFoundException;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
@@ -42,7 +43,9 @@ public class SimpleHttpExceptionHandler extends SimpleChannelInboundHandler<Http
     @Override
     protected void messageReceived(ChannelHandlerContext ctx, HttpException msg) throws Exception {
         FullHttpResponse response = new DefaultFullHttpResponse(msg.getHttpRequest().protocolVersion(), msg.getResponseCode());
-        if (msg instanceof NotFoundException) {
+        if (msg instanceof LastNotFoundException) {
+            return;
+        } else if (msg instanceof NotFoundException) {
             this.exceptNotFound((NotFoundException) msg, response.headers(), response.content());
         } else if (msg instanceof BadRequestException) {
             LOG.warn("[\"" + msg.getMessage() + "\",\"" + ctx.channel().id() + "\",\"" + ctx.channel().remoteAddress() + "\"]");

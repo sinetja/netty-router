@@ -8,29 +8,19 @@
  */
 package io.netty.handler.codec.http.router;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.ChannelPromise;
-import io.netty.handler.codec.DecoderException;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.handler.codec.http.router.exceptions.BadRequestException;
+import io.netty.handler.codec.http.router.exceptions.LastNotFoundException;
 import io.netty.handler.codec.http.router.exceptions.NotFoundException;
 import io.netty.handler.codec.http.router.exceptions.UnsupportedMethodException;
-import io.netty.handler.routing.RoutingException;
 import io.netty.handler.routing.SimpleCycleRouter;
-import io.netty.handler.routing.UnableRoutingMessageException;
-import io.netty.util.CharsetUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import java.text.MessageFormat;
@@ -65,17 +55,16 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
     public void write(final ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
         if (msg instanceof HttpException) {
             HttpException httpexc = (HttpException) msg;
-            FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, httpexc.getResponseCode(), Unpooled.copiedBuffer("Failure: " + httpexc.getMessage() + "\r\n", CharsetUtil.UTF_8));
-            response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
-            ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+            exceptionCaught(ctx, httpexc);
             if (((HttpException) msg).getHttpRouted() == null) {
                 LOG.error(MessageFormat.format("BOMB!! NO ROUTED Exception occured from matched routing, debug and fix it!! exception message:{0}", ((HttpException) msg).getMessage()), (Throwable) msg);
             } else {
-                LOG.error(MessageFormat.format("Unprocessed WrappedException occured through {0}, with the request-message:{1}", ((HttpException) msg).getHttpRouted().getPatternName(), ((HttpException) msg).getHttpRequest()), (Throwable) msg);
+                LOG.error(MessageFormat.format("BOMB!! Unprocessed WrappedException occured in write through {0}, with the request-message:{1}", ((HttpException) msg).getHttpRouted().getPatternName(), ((HttpException) msg).getHttpRequest()), (Throwable) msg);
             }
             return;
         } else if (msg instanceof Exception) {
-            LOG.error((Throwable) msg);
+            LOG.error(MessageFormat.format("BOMB!! Unwrapped Exception occured in write, with message: {0}", ((Exception) msg).getMessage()), (Throwable) msg);
+            return;
         }
         super.write(ctx, msg, promise);
     }
@@ -90,38 +79,8 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
     public void exceptionCaught(final ChannelHandlerContext ctx, Throwable cause) throws Exception {
         if (cause instanceof HttpException) {
             super.exceptionForward(cause);
-            return;
-        } else if (cause instanceof DecoderException && !ctx.channel().isOpen()) {
-            return;
-        } else if (cause instanceof UnableRoutingMessageException && !ctx.channel().isOpen()) {
-            UnableRoutingMessageException exc = (UnableRoutingMessageException) cause;
-            if (!(exc.getRoutingMessage() instanceof HttpObject)) {
-                LOG.warn(MessageFormat.format("Unexpected message[{1}] is trying to be put in a closed channel: {0}", ctx.channel().id(), exc.getRoutingMessage().getClass().getName()));
-                return;
-            }
-            LOG.warn(MessageFormat.format("One http message is trying to be put in a closed channel: {0}", ctx.channel().id()));
-            return;
-        } else if (!(cause instanceof RoutingException)) {
-            LOG.error("Bomb!!!!--Unwrapped exception was throwed:", cause);
-            super.exceptionForward(new HttpException(cause) {
-                @Override
-                public HttpRequest getHttpRequest() {
-                    return activeRouted.get(ctx.channel()).getRequestMsg();
-                }
-
-                @Override
-                public io.netty.handler.codec.http.router.HttpRouted getHttpRouted() {
-                    return activeRouted.get(ctx.channel());
-                }
-            });
-            return;
-        }
-        final RoutingException exc = (RoutingException) cause;
-        if (exc.unwrapException() instanceof HttpException) {
-            super.exceptionForward(exc.unwrapException());
         } else {
-            super.exceptionForward(new HttpException(exc.unwrapException()) {
-
+            super.exceptionForward(new RouterWrappedException(cause) {
                 @Override
                 public HttpRequest getHttpRequest() {
                     return activeRouted.get(ctx.channel()).getRequestMsg();
@@ -202,7 +161,7 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
 
     @Override
     protected void initExceptionRouting(ChannelPipeline pipeline) {
-        pipeline.addLast(new SimpleHttpExceptionHandler());
+        pipeline.addLast(new UnwrappedExceptionHandler()).addLast(new SimpleHttpExceptionHandler());
     }
 
     @Override
@@ -222,6 +181,7 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
             matched_info = matcher.match(qsd.path());
         }
         if (matched_info == null) {
+            activeRouted.remove(ctx.channel());
             throw new NotFoundException(qsd.path(), null) {
                 @Override
                 public HttpRequest getHttpRequest() {
@@ -240,6 +200,10 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
 
     @Override
     protected final boolean routeEnd(ChannelHandlerContext ctx, LastHttpContent msg) throws Exception {
+        if (activeRouted.get(ctx.channel()) == null || activeRouted.get(ctx.channel()).isRouteMatchingEnded) {
+            throw new LastNotFoundException();
+        }
+        activeRouted.get(ctx.channel()).isRouteMatchingEnded = true;
         return true;
     }
 
@@ -262,11 +226,21 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
         throw new Exception("EMERGENCY: Previous HttpRouted info is being used, however next HttpRequest message have been received.");
     }
 
+    private abstract class RouterWrappedException extends HttpException implements WrappedByRouter {
+
+        public RouterWrappedException(Throwable cause) {
+            super(cause);
+        }
+
+    }
+
     /**
      * A aggregator with HttpRequest message, ChannelHandlerContext and Routing
      * info.
      */
     private class HttpRouted extends io.netty.handler.codec.http.router.HttpRouted {
+
+        private boolean isRouteMatchingEnded = false;
 
         private final RoutingPathMatched matched;
 
