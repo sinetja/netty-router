@@ -186,7 +186,9 @@ public abstract class Router extends ChannelHandlerAdapter {
      */
     protected abstract void route(ChannelHandlerContext ctx, Object msg, Map<String, ChannelPipeline> routingPipelines) throws Exception;
 
-    protected abstract void initExceptionRouting(ChannelPipeline pipeline);
+    protected void initExceptionRouting(ChannelPipeline pipeline) {
+        pipeline.addLast(new RoutingExceptionHandler());
+    }
 
     /**
      * The Handler Added is not allowed to be used in Router, and initRouter is
