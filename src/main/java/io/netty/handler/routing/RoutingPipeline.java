@@ -17,19 +17,21 @@ import io.netty.channel.ChannelHandlerInvokerUtil;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.ChannelPromise;
 import io.netty.util.concurrent.EventExecutorGroup;
+import io.netty.util.internal.logging.InternalLogger;
+import io.netty.util.internal.logging.InternalLoggerFactory;
 import java.net.SocketAddress;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
  * @author Richard Lea <chigix@zoho.com>
  */
 class RoutingPipeline implements ChannelPipeline {
+
+    private static final InternalLogger LOG = InternalLoggerFactory.getInstance(RoutingPipeline.class);
 
     private final AnchorChannelHandler start;
 
@@ -58,7 +60,7 @@ class RoutingPipeline implements ChannelPipeline {
         this.parentRouter = parentRouter;
         this.handlerNamePrefix = UUID.randomUUID().toString();
         this.pipelineName = name;
-        final ChannelPipeline self_pipeline = this;
+        final RoutingPipeline self_pipeline = this;
         this.start = new AnchorChannelHandler(this) {
 
             @Override
@@ -68,6 +70,7 @@ class RoutingPipeline implements ChannelPipeline {
 
             @Override
             public void exceptionCaught(ChannelHandlerContext ctx, final Throwable cause) throws Exception {
+                // @TODO argue again is this exception needed?
                 ChannelHandlerInvokerUtil.invokeExceptionCaughtNow(routerCtx, new RoutingException() {
 
                     @Override
@@ -92,10 +95,19 @@ class RoutingPipeline implements ChannelPipeline {
 
             @Override
             public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                // Prevent from passing msg to the next handler in same parent pipeline, 
+                // which is start AnchorChannelHandler of the next subpipeline.
             }
 
             @Override
             public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+            }
+
+            @Override
+            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                // Prevent from passing exception to the next handler in same parent pipeline, 
+                // which is start AnchorChannelHandler of the next subpipeline.
+                LOG.warn("An exception [{}] was thrown by a user handler while no user handler to catch. [{}] is suggested to append into pipeline: [{}]", cause.toString(), DefaultExceptionForwarder.class.toString(), self_pipeline.getPipelineName());
             }
 
         };
