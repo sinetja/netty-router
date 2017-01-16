@@ -274,7 +274,7 @@ public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> 
         @Override
         public void allow() {
             if (isDeniedLocked) {
-                throw new RuntimeException("Second Access Permission Change happened!! RequestRouted has been " + (isDenied ? "Denied" : "Allowed") + "previously.");
+                throw new RuntimeException("Second Access Permission Change happened!! RequestRouted has been " + (isDenied ? "Denied" : "Allowed") + " previously.");
             }
             this.isDeniedLocked = true;
             this.isDenied = false;

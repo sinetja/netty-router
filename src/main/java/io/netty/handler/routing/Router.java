@@ -80,7 +80,7 @@ public abstract class Router extends ChannelHandlerAdapter {
 
     @Override
     public final void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        this.exceptionPipeline = (RoutingPipeline) this.newRouting(ctx);
+        this.exceptionPipeline = (RoutingPipeline) this.newRouting(ctx, "EXCEPTION_PIPELINE");
         this.initExceptionRouting(exceptionPipeline);
         this.initRouter(ctx);
     }

@@ -408,4 +408,8 @@ public class HttpRouterIT {
         Assert.assertEquals(0, exceptions.size());
     }
 
+    @Test
+    public void testEmptyRouter() {
+    }
+
 }
