@@ -80,7 +80,7 @@ public abstract class Router extends ChannelHandlerAdapter {
 
     @Override
     public final void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        this.exceptionPipeline = (RoutingPipeline) this.newRouting(ctx, "EXCEPTION_PIPELINE");
+        this.exceptionPipeline = (RoutingPipeline) this.newRouting(ctx, "EXCEPTION_PIPELINE", true);
         this.initExceptionRouting(exceptionPipeline);
         this.initRouter(ctx);
     }
@@ -101,10 +101,14 @@ public abstract class Router extends ChannelHandlerAdapter {
      * @return
      */
     protected final ChannelPipeline newRouting(ChannelHandlerContext ctx, String name) {
+        return newRouting(ctx, name, false);
+    }
+
+    private ChannelPipeline newRouting(ChannelHandlerContext ctx, String name, boolean isException) {
         if (name == null) {
             name = "Routing-" + this.nullNameRoutingCount.incrementAndGet();
         }
-        RoutingPipeline pipeline = new RoutingPipeline(ctx, name, this);
+        RoutingPipeline pipeline = new RoutingPipeline(ctx, name, this, isException);
         ctx.pipeline().addLast(pipeline.getStart().getAnchorName(), pipeline.getStart());
         ctx.pipeline().addAfter(pipeline.getStart().getAnchorName(), pipeline.getEnd().getAnchorName(), pipeline.getEnd());
         this.routingPipelines.put(name, pipeline);

@@ -56,7 +56,7 @@ class RoutingPipeline implements ChannelPipeline {
      * @param name The name of this pipeline, mostly is proposed as the routing
      * name.
      */
-    public RoutingPipeline(final ChannelHandlerContext routerCtx, final String name, Router parentRouter) {
+    public RoutingPipeline(final ChannelHandlerContext routerCtx, final String name, final Router parentRouter, final boolean isExceptionPipeline) {
         this.parentRouter = parentRouter;
         this.handlerNamePrefix = UUID.randomUUID().toString();
         this.pipelineName = name;
@@ -70,47 +70,54 @@ class RoutingPipeline implements ChannelPipeline {
 
             @Override
             public void exceptionCaught(ChannelHandlerContext ctx, final Throwable cause) throws Exception {
-                // @TODO argue again is this exception needed?
-                ChannelHandlerInvokerUtil.invokeExceptionCaughtNow(routerCtx, new RoutingException() {
-
-                    @Override
-                    public String getRoutingName() {
-                        return name;
-                    }
-
-                    @Override
-                    public ChannelPipeline getRoutingPipeline() {
-                        return self_pipeline;
-                    }
-
-                    @Override
-                    public Throwable unwrapException() {
-                        return cause;
-                    }
-                });
+                LOG.warn("Unexpected exception catched before entering into routing:[{}], message: {}", name, cause.getMessage());
             }
 
         };
-        this.end = new AnchorChannelHandler(this) {
+        if (isExceptionPipeline) {
+            this.end = new AnchorChannelHandler(this) {
 
-            @Override
-            public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-                // Prevent from passing msg to the next handler in same parent pipeline, 
-                // which is start AnchorChannelHandler of the next subpipeline.
-            }
+                @Override
+                public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                    // Prevent from passing msg to the next handler in same parent pipeline, 
+                    // which is start AnchorChannelHandler of the next subpipeline.
+                    LOG.warn("An unprocessed message [{}:{}] appeared in exception pipeline. Fire this exception to parent router. Current Router: [{}]", msg.getClass(), msg.getClass().getSuperclass(), parentRouter.getRouterTypeName());
+                }
 
-            @Override
-            public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-            }
+                @Override
+                public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+                }
 
-            @Override
-            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-                // Prevent from passing exception to the next handler in same parent pipeline, 
-                // which is start AnchorChannelHandler of the next subpipeline.
-                LOG.warn("An exception [{}] was thrown by a user handler while no user handler to catch. [{}] is suggested to append into pipeline: [{}]", cause.toString(), DefaultExceptionForwarder.class.toString(), self_pipeline.getPipelineName());
-            }
+                @Override
+                public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                    // Prevent from passing exception to the next handler in same parent pipeline, 
+                    // which is start AnchorChannelHandler of the next subpipeline.
+                    LOG.warn("An exception [{}] was thrown in exception pipeline while no user handler to catch. Fire this exception to parent router. Current Router: [{}]", cause.toString(), parentRouter.getRouterTypeName());
+                }
 
-        };
+            };
+        } else {
+            this.end = new AnchorChannelHandler(this) {
+
+                @Override
+                public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                    // Prevent from passing msg to the next handler in same parent pipeline, 
+                    // which is start AnchorChannelHandler of the next subpipeline.
+                }
+
+                @Override
+                public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+                }
+
+                @Override
+                public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                    // Prevent from passing exception to the next handler in same parent pipeline, 
+                    // which is start AnchorChannelHandler of the next subpipeline.
+                    LOG.warn("An exception [{}] was thrown by a user handler while no user handler to catch. [{}] is suggested to append into pipeline: [{}]", cause.toString(), DefaultExceptionForwarder.class.toString(), self_pipeline.getPipelineName());
+                }
+
+            };
+        }
         this.parentPipeline = routerCtx.pipeline();
     }
 
