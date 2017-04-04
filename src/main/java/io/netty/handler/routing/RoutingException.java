@@ -8,17 +8,13 @@
  */
 package io.netty.handler.routing;
 
-import io.netty.channel.ChannelPipeline;
-
 /**
  *
  * @author Richard Lea <chigix@zoho.com>
  */
 public abstract class RoutingException extends Exception {
 
-    public abstract String getRoutingName();
-
-    public abstract ChannelPipeline getRoutingPipeline();
+    public abstract String getRoutingNameTrace();
 
     public abstract Throwable unwrapException();
 }

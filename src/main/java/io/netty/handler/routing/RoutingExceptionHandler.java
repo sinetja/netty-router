@@ -39,7 +39,7 @@ public class RoutingExceptionHandler extends ChannelHandlerAdapter {
     }
 
     public void handleRoutingException(ChannelHandlerContext ctx, RoutingException exc) {
-        LOG.error(exc);
+        LOG.error(MessageFormat.format("{1}\n[{0}]", exc.getRoutingNameTrace(), exc.unwrapException().getMessage()), exc.unwrapException());
     }
 
     public void handleUnableRouting(ChannelHandlerContext ctx, UnableRoutingMessageException exc) {
