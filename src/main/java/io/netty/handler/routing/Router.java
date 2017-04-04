@@ -9,6 +9,7 @@
 package io.netty.handler.routing;
 
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelHandlerInvokerUtil;
@@ -42,6 +43,8 @@ public abstract class Router extends ChannelHandlerAdapter {
     private final boolean autoRelease;
 
     private final String routerTypeName;
+
+    private RoutingPipeline parentPipeline = null;
 
     /**
      * It should be set to false if this router is added after a decoder
@@ -108,7 +111,42 @@ public abstract class Router extends ChannelHandlerAdapter {
         if (name == null) {
             name = "Routing-" + this.nullNameRoutingCount.incrementAndGet();
         }
-        RoutingPipeline pipeline = new RoutingPipeline(ctx, name, this, isException);
+        final RoutingPipeline pipeline;
+        if (isException) {
+            pipeline = new RoutingPipeline(ctx, name, this) {
+                @Override
+                protected void messageReadAtEnd(ChannelHandlerContext ctx, Object msg) {
+                    LOG.warn("An unprocessed message [{}:{}] appeared in exception pipeline. Fire this exception to parent router. Current Router: [{}]", msg.getClass(), msg.getClass().getSuperclass(), getRouterTypeName());
+                }
+
+                @Override
+                protected void exceptionCaughtAtEnd(ChannelHandlerContext ctx, Throwable cause) {
+                    LOG.warn("An exception [{}] was thrown in exception pipeline while no user handler to catch. Fire this exception to parent routing's exception forwarder. Current Router: [{}]", cause.toString(), getRouterTypeName());
+                }
+
+            };
+            if (parentPipeline != null) {
+                // Current router is playing as a handler embedded in a subrouting.
+                pipeline.addHandlerListener(new RoutingPipeline.HandlerAddedListener() {
+                    @Override
+                    public void beforeAdded(String name, ChannelHandler handler) {
+                        if (handler instanceof PackageDependencyAware) {
+                            ((PackageDependencyAware) handler).setParentRoutingPipeline(parentPipeline);
+                        }
+                    }
+                });
+            }
+        } else {
+            pipeline = new RoutingPipeline(ctx, name, this);
+            pipeline.addHandlerListener(new RoutingPipeline.HandlerAddedListener() {
+                @Override
+                public void beforeAdded(String name, ChannelHandler handler) {
+                    if (handler instanceof Router) {
+                        ((Router) handler).parentPipeline = pipeline;
+                    }
+                }
+            });
+        }
         ctx.pipeline().addLast(pipeline.getStart().getAnchorName(), pipeline.getStart());
         ctx.pipeline().addAfter(pipeline.getStart().getAnchorName(), pipeline.getEnd().getAnchorName(), pipeline.getEnd());
         this.routingPipelines.put(name, pipeline);

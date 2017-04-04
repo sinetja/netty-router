@@ -20,6 +20,7 @@ import io.netty.util.concurrent.EventExecutorGroup;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +46,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     private final String handlerNamePrefix;
 
+    private final List<HandlerAddedListener> handlerAddedListeners = new ArrayList<HandlerAddedListener>();
+
     public String getPipelineName() {
         return pipelineName;
     }
@@ -56,7 +59,7 @@ class RoutingPipeline implements ChannelPipeline {
      * @param name The name of this pipeline, mostly is proposed as the routing
      * name.
      */
-    public RoutingPipeline(final ChannelHandlerContext routerCtx, final String name, final Router parentRouter, final boolean isExceptionPipeline) {
+    public RoutingPipeline(final ChannelHandlerContext routerCtx, final String name, final Router parentRouter) {
         this.parentRouter = parentRouter;
         this.handlerNamePrefix = UUID.randomUUID().toString();
         this.pipelineName = name;
@@ -74,51 +77,47 @@ class RoutingPipeline implements ChannelPipeline {
             }
 
         };
-        if (isExceptionPipeline) {
-            this.end = new AnchorChannelHandler(this) {
+        this.end = new AnchorChannelHandler(this) {
 
-                @Override
-                public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-                    // Prevent from passing msg to the next handler in same parent pipeline, 
-                    // which is start AnchorChannelHandler of the next subpipeline.
-                    LOG.warn("An unprocessed message [{}:{}] appeared in exception pipeline. Fire this exception to parent router. Current Router: [{}]", msg.getClass(), msg.getClass().getSuperclass(), parentRouter.getRouterTypeName());
-                }
+            @Override
+            public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                // Prevent from passing msg to the next handler in same parent pipeline, 
+                // which is start AnchorChannelHandler of the next subpipeline.
+                messageReadAtEnd(ctx, msg);
+            }
 
-                @Override
-                public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-                }
+            @Override
+            public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+            }
 
-                @Override
-                public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-                    // Prevent from passing exception to the next handler in same parent pipeline, 
-                    // which is start AnchorChannelHandler of the next subpipeline.
-                    LOG.warn("An exception [{}] was thrown in exception pipeline while no user handler to catch. Fire this exception to parent router. Current Router: [{}]", cause.toString(), parentRouter.getRouterTypeName());
-                }
+            @Override
+            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                // Prevent from passing exception to the next handler in same parent pipeline, 
+                // which is start AnchorChannelHandler of the next subpipeline.
+                exceptionCaughtAtEnd(ctx, cause);
+            }
 
-            };
-        } else {
-            this.end = new AnchorChannelHandler(this) {
-
-                @Override
-                public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-                    // Prevent from passing msg to the next handler in same parent pipeline, 
-                    // which is start AnchorChannelHandler of the next subpipeline.
-                }
-
-                @Override
-                public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-                }
-
-                @Override
-                public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-                    // Prevent from passing exception to the next handler in same parent pipeline, 
-                    // which is start AnchorChannelHandler of the next subpipeline.
-                    LOG.warn("An exception [{}] was thrown by a user handler while no user handler to catch. [{}] is suggested to append into pipeline: [{}]", cause.toString(), DefaultExceptionForwarder.class.toString(), self_pipeline.getPipelineName());
-                }
-
-            };
-        }
+        };
         this.parentPipeline = routerCtx.pipeline();
+        this.handlerAddedListeners.add(new HandlerAddedListener() {
+            @Override
+            public void beforeAdded(String name, final ChannelHandler handler) {
+                if (handler instanceof PackageDependencyAware) {
+                    ((PackageDependencyAware) handler).setParentRoutingPipeline(self_pipeline);
+                } else if (handler instanceof InternalForwardable) {
+                    ((InternalForwardable) handler).setForwarder(new Forwarder() {
+                        @Override
+                        public void forward(ChannelHandlerContext ctx, Object msg) {
+                            try {
+                                handler.channelRead(ctx, msg);
+                            } catch (Exception ex) {
+                                throw new RuntimeException(ex);
+                            }
+                        }
+                    });
+                }
+            }
+        });
     }
 
     public AnchorChannelHandler getStart() {
@@ -137,22 +136,36 @@ class RoutingPipeline implements ChannelPipeline {
         return this.handlerNamePrefix + "-" + handlerName;
     }
 
+    /**
+     * Provide override for exception pipeline defined in {@link Router}
+     *
+     * @param ctx
+     * @param cause
+     */
+    protected void messageReadAtEnd(ChannelHandlerContext ctx, Object msg) {
+    }
+
+    /**
+     * Provide override for exception pipeline defined in {@link Router}.
+     *
+     * @param ctx
+     * @param cause
+     */
+    protected void exceptionCaughtAtEnd(ChannelHandlerContext ctx, Throwable cause) {
+        // Prevent from passing exception to the next handler in same parent pipeline, 
+        // which is start AnchorChannelHandler of the next subpipeline.
+        LOG.warn("An exception [{}] was thrown by a user handler while no user handler to catch. [{}] is suggested to append into pipeline: [{}]", cause.toString(), DefaultExceptionForwarder.class.toString(), getPipelineName());
+    }
+
+    public RoutingPipeline addHandlerListener(HandlerAddedListener listener) {
+        handlerAddedListeners.add(listener);
+        return this;
+    }
+
     @Override
     public ChannelPipeline addFirst(String name, ChannelHandler handler) {
-        final ChannelHandler current_handler = handler;
-        if (handler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-        } else if (handler instanceof InternalForwardable) {
-            ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(name, handler);
         }
         this.parentPipeline.addAfter(this.start.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
@@ -160,20 +173,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addFirst(EventExecutorGroup group, String name, ChannelHandler handler) {
-        final ChannelHandler current_handler = handler;
-        if (handler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-        } else if (handler instanceof InternalForwardable) {
-            ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(name, handler);
         }
         this.parentPipeline.addAfter(group, this.start.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
@@ -181,20 +182,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addFirst(ChannelHandlerInvoker invoker, String name, ChannelHandler handler) {
-        final ChannelHandler current_handler = handler;
-        if (handler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-        } else if (handler instanceof InternalForwardable) {
-            ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(name, handler);
         }
         this.parentPipeline.addAfter(invoker, this.start.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
@@ -202,20 +191,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addLast(String name, ChannelHandler handler) {
-        final ChannelHandler current_handler = handler;
-        if (handler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-        } else if (handler instanceof InternalForwardable) {
-            ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(name, handler);
         }
         this.parentPipeline.addBefore(this.end.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
@@ -223,20 +200,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addLast(EventExecutorGroup group, String name, ChannelHandler handler) {
-        final ChannelHandler current_handler = handler;
-        if (handler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-        } else if (handler instanceof InternalForwardable) {
-            ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(name, handler);
         }
         this.parentPipeline.addBefore(group, this.end.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
@@ -244,20 +209,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addLast(ChannelHandlerInvoker invoker, String name, ChannelHandler handler) {
-        final ChannelHandler current_handler = handler;
-        if (handler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-        } else if (handler instanceof InternalForwardable) {
-            ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(name, handler);
         }
         this.parentPipeline.addBefore(invoker, this.end.getAnchorName(), this.handlerNameFormatter(name), handler);
         return this;
@@ -265,20 +218,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addBefore(String baseName, String name, ChannelHandler handler) {
-        final ChannelHandler current_handler = handler;
-        if (handler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-        } else if (handler instanceof InternalForwardable) {
-            ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(name, handler);
         }
         this.parentPipeline.addBefore(this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
@@ -286,20 +227,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addBefore(EventExecutorGroup group, String baseName, String name, ChannelHandler handler) {
-        final ChannelHandler current_handler = handler;
-        if (handler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-        } else if (handler instanceof InternalForwardable) {
-            ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(name, handler);
         }
         this.parentPipeline.addBefore(group, this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
@@ -307,20 +236,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addBefore(ChannelHandlerInvoker invoker, String baseName, String name, ChannelHandler handler) {
-        final ChannelHandler current_handler = handler;
-        if (handler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-        } else if (handler instanceof InternalForwardable) {
-            ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(name, handler);
         }
         this.parentPipeline.addBefore(invoker, this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
@@ -328,20 +245,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addAfter(String baseName, String name, ChannelHandler handler) {
-        final ChannelHandler current_handler = handler;
-        if (handler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-        } else if (handler instanceof InternalForwardable) {
-            ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(name, handler);
         }
         this.parentPipeline.addAfter(this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
@@ -349,20 +254,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addAfter(EventExecutorGroup group, String baseName, String name, ChannelHandler handler) {
-        final ChannelHandler current_handler = handler;
-        if (handler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-        } else if (handler instanceof InternalForwardable) {
-            ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(name, handler);
         }
         this.parentPipeline.addAfter(group, this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
@@ -370,20 +263,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline addAfter(ChannelHandlerInvoker invoker, String baseName, String name, ChannelHandler handler) {
-        final ChannelHandler current_handler = handler;
-        if (handler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-        } else if (handler instanceof InternalForwardable) {
-            ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(name, handler);
         }
         this.parentPipeline.addAfter(invoker, this.handlerNameFormatter(baseName), this.handlerNameFormatter(name), handler);
         return this;
@@ -392,20 +273,8 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addFirst(ChannelHandler... handlers) {
         for (int i = handlers.length - 1; i > 0; i--) {
-            final ChannelHandler current_handler = handlers[i];
-            if (handlers[i] instanceof PackageDependencyAware) {
-                ((PackageDependencyAware) handlers[i]).setParentRoutingPipeline(this);
-            } else if (handlers[i] instanceof InternalForwardable) {
-                ((InternalForwardable) handlers[i]).setForwarder(new Forwarder() {
-                    @Override
-                    public void forward(ChannelHandlerContext ctx, Object msg) {
-                        try {
-                            current_handler.channelRead(ctx, msg);
-                        } catch (Exception ex) {
-                            throw new RuntimeException(ex);
-                        }
-                    }
-                });
+            for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+                handlerAddedListener.beforeAdded(null, handlers[i]);
             }
             this.parentPipeline.addAfter(this.getStart().getAnchorName(), null, handlers[i]);
         }
@@ -415,20 +284,8 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addFirst(EventExecutorGroup group, ChannelHandler... handlers) {
         for (int i = handlers.length - 1; i > 0; i--) {
-            final ChannelHandler current_handler = handlers[i];
-            if (handlers[i] instanceof PackageDependencyAware) {
-                ((PackageDependencyAware) handlers[i]).setParentRoutingPipeline(this);
-            } else if (handlers[i] instanceof InternalForwardable) {
-                ((InternalForwardable) handlers[i]).setForwarder(new Forwarder() {
-                    @Override
-                    public void forward(ChannelHandlerContext ctx, Object msg) {
-                        try {
-                            current_handler.channelRead(ctx, msg);
-                        } catch (Exception ex) {
-                            throw new RuntimeException(ex);
-                        }
-                    }
-                });
+            for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+                handlerAddedListener.beforeAdded(null, handlers[i]);
             }
             this.parentPipeline.addAfter(group, this.getStart().getAnchorName(), null, handlers[i]);
         }
@@ -438,20 +295,8 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addFirst(ChannelHandlerInvoker invoker, ChannelHandler... handlers) {
         for (int i = handlers.length - 1; i > 0; i--) {
-            final ChannelHandler current_handler = handlers[i];
-            if (handlers[i] instanceof PackageDependencyAware) {
-                ((PackageDependencyAware) handlers[i]).setParentRoutingPipeline(this);
-            } else if (handlers[i] instanceof InternalForwardable) {
-                ((InternalForwardable) handlers[i]).setForwarder(new Forwarder() {
-                    @Override
-                    public void forward(ChannelHandlerContext ctx, Object msg) {
-                        try {
-                            current_handler.channelRead(ctx, msg);
-                        } catch (Exception ex) {
-                            throw new RuntimeException(ex);
-                        }
-                    }
-                });
+            for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+                handlerAddedListener.beforeAdded(null, handlers[i]);
             }
             this.parentPipeline.addAfter(invoker, this.getStart().getAnchorName(), null, handlers[i]);
         }
@@ -461,20 +306,8 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addLast(ChannelHandler... handlers) {
         for (ChannelHandler handler : handlers) {
-            final ChannelHandler current_handler = handler;
-            if (handler instanceof PackageDependencyAware) {
-                ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-            } else if (handler instanceof InternalForwardable) {
-                ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                    @Override
-                    public void forward(ChannelHandlerContext ctx, Object msg) {
-                        try {
-                            current_handler.channelRead(ctx, msg);
-                        } catch (Exception ex) {
-                            throw new RuntimeException(ex);
-                        }
-                    }
-                });
+            for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+                handlerAddedListener.beforeAdded(null, handler);
             }
             this.parentPipeline.addBefore(this.getEnd().getAnchorName(), null, handler);
         }
@@ -484,20 +317,8 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addLast(EventExecutorGroup group, ChannelHandler... handlers) {
         for (ChannelHandler handler : handlers) {
-            final ChannelHandler current_handler = handler;
-            if (handler instanceof PackageDependencyAware) {
-                ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-            } else if (handler instanceof InternalForwardable) {
-                ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                    @Override
-                    public void forward(ChannelHandlerContext ctx, Object msg) {
-                        try {
-                            current_handler.channelRead(ctx, msg);
-                        } catch (Exception ex) {
-                            throw new RuntimeException(ex);
-                        }
-                    }
-                });
+            for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+                handlerAddedListener.beforeAdded(null, handler);
             }
             this.parentPipeline.addBefore(group, this.getEnd().getAnchorName(), null, handler);
         }
@@ -507,20 +328,8 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public ChannelPipeline addLast(ChannelHandlerInvoker invoker, ChannelHandler... handlers) {
         for (ChannelHandler handler : handlers) {
-            final ChannelHandler current_handler = handler;
-            if (handler instanceof PackageDependencyAware) {
-                ((PackageDependencyAware) handler).setParentRoutingPipeline(this);
-            } else if (handler instanceof InternalForwardable) {
-                ((InternalForwardable) handler).setForwarder(new Forwarder() {
-                    @Override
-                    public void forward(ChannelHandlerContext ctx, Object msg) {
-                        try {
-                            current_handler.channelRead(ctx, msg);
-                        } catch (Exception ex) {
-                            throw new RuntimeException(ex);
-                        }
-                    }
-                });
+            for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+                handlerAddedListener.beforeAdded(null, handler);
             }
             this.parentPipeline.addBefore(invoker, this.getEnd().getAnchorName(), null, handler);
         }
@@ -555,20 +364,8 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelPipeline replace(ChannelHandler oldHandler, String newName, ChannelHandler newHandler) {
-        final ChannelHandler current_handler = newHandler;
-        if (newHandler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) newHandler).setParentRoutingPipeline(this);
-        } else if (newHandler instanceof InternalForwardable) {
-            ((InternalForwardable) newHandler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(newName, newHandler);
         }
         this.parentPipeline.replace(oldHandler, this.handlerNameFormatter(newName), newHandler);
         return this;
@@ -576,40 +373,16 @@ class RoutingPipeline implements ChannelPipeline {
 
     @Override
     public ChannelHandler replace(String oldName, String newName, ChannelHandler newHandler) {
-        final ChannelHandler current_handler = newHandler;
-        if (newHandler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) newHandler).setParentRoutingPipeline(this);
-        } else if (newHandler instanceof InternalForwardable) {
-            ((InternalForwardable) newHandler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(newName, newHandler);
         }
         return this.parentPipeline.replace(this.handlerNameFormatter(oldName), this.handlerNameFormatter(newName), newHandler);
     }
 
     @Override
     public <T extends ChannelHandler> T replace(Class<T> oldHandlerType, String newName, ChannelHandler newHandler) {
-        final ChannelHandler current_handler = newHandler;
-        if (newHandler instanceof PackageDependencyAware) {
-            ((PackageDependencyAware) newHandler).setParentRoutingPipeline(this);
-        } else if (newHandler instanceof InternalForwardable) {
-            ((InternalForwardable) newHandler).setForwarder(new Forwarder() {
-                @Override
-                public void forward(ChannelHandlerContext ctx, Object msg) {
-                    try {
-                        current_handler.channelRead(ctx, msg);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            });
+        for (HandlerAddedListener handlerAddedListener : handlerAddedListeners) {
+            handlerAddedListener.beforeAdded(newName, newHandler);
         }
         return this.parentPipeline.replace(oldHandlerType, this.handlerNameFormatter(newName), newHandler);
     }
@@ -812,6 +585,11 @@ class RoutingPipeline implements ChannelPipeline {
     @Override
     public Iterator<Map.Entry<String, ChannelHandler>> iterator() {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    public static abstract class HandlerAddedListener {
+
+        public abstract void beforeAdded(String name, ChannelHandler handler);
     }
 
 }
