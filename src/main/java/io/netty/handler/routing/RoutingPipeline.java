@@ -108,11 +108,7 @@ class RoutingPipeline implements ChannelPipeline {
                     ((InternalForwardable) handler).setForwarder(new Forwarder() {
                         @Override
                         public void forward(ChannelHandlerContext ctx, Object msg) {
-                            try {
-                                handler.channelRead(ctx, msg);
-                            } catch (Exception ex) {
-                                throw new RuntimeException(ex);
-                            }
+                            ctx.fireChannelRead(msg);
                         }
                     });
                 }
