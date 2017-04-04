@@ -13,8 +13,9 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 
 /**
- * Special handler for catch exceptions and forward to the parent router's
- * exception pipeline.
+ * Special handler for catching exceptions and wrap it as
+ * {@link RoutingException} to forward to the parent router's exception
+ * pipeline.
  *
  * @author Richard Lea <chigix@zoho.com>
  */
@@ -23,12 +24,36 @@ public class DefaultExceptionForwarder extends ChannelHandlerAdapter implements 
     private RoutingPipeline parentPipeline;
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    public void exceptionCaught(ChannelHandlerContext ctx, final Throwable cause) throws Exception {
         if (this.parentPipeline == null) {
             throw new Exception("Please check this exception forwarder is added at Routing Pipeline. "
                     + "Null Pipeline was not allowed to forward.");
         }
-        this.parentPipeline.getParentRouter().exceptionCaught(ctx, cause);
+        this.parentPipeline.getParentRouter().exceptionCaught(ctx, cause instanceof RoutingException
+                ? new RoutingException() {
+            @Override
+            public String getRoutingNameTrace() {
+                return parentPipeline.getPipelineName()
+                        + " -> "
+                        + ((RoutingException) cause).getRoutingNameTrace();
+            }
+
+            @Override
+            public Throwable unwrapException() {
+                return ((RoutingException) cause).unwrapException();
+            }
+        }
+                : new RoutingException() {
+            @Override
+            public String getRoutingNameTrace() {
+                return parentPipeline.getPipelineName();
+            }
+
+            @Override
+            public Throwable unwrapException() {
+                return cause;
+            }
+        });
     }
 
     @Override
