@@ -21,7 +21,6 @@ import io.netty.handler.codec.http.HttpRequestEncoder;
 import io.netty.handler.codec.http.router.HttpException;
 import io.netty.handler.codec.http.router.HttpRouted;
 import io.netty.handler.codec.http.router.HttpRouter;
-import io.netty.handler.codec.http.router.HttpRouterIT;
 import io.netty.handler.codec.http.router.RoutingConfig;
 import io.netty.util.CharsetUtil;
 import java.text.MessageFormat;
@@ -38,7 +37,7 @@ import org.slf4j.LoggerFactory;
  */
 public class CodecUtil {
 
-    private static final Logger LOG = LoggerFactory.getLogger(HttpRouterIT.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(CodecUtil.class.getName());
 
     /**
      * Convert a HttpRequest Object in Netty Codec to Netty standard ByteBuf for
