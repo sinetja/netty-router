@@ -20,6 +20,7 @@ import io.netty.util.concurrent.EventExecutorGroup;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import java.net.SocketAddress;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -69,6 +70,16 @@ class RoutingPipeline implements ChannelPipeline {
             @Override
             public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
                 ChannelHandlerInvokerUtil.invokeWriteNow(routerCtx, msg, promise);
+            }
+
+            @Override
+            public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                try {
+                    super.channelRead(ctx, msg);
+                } catch (Exception exception) {
+                    LOG.error(MessageFormat.format("Received a null message in routing [{0}].", self_pipeline.getPipelineName()),
+                            exception);
+                }
             }
 
             @Override
