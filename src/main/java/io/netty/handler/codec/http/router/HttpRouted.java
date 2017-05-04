@@ -12,6 +12,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderUtil;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import java.text.MessageFormat;
@@ -63,7 +64,16 @@ public abstract class HttpRouted {
      * respond as well as closing the channel.
      */
     public void deny() {
-        this.getChannelHandlerContext().writeAndFlush(new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.FORBIDDEN));
+    }
+
+    public void denyWithResponse() {
+        deny();
+        denyWithResponse(new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.FORBIDDEN));
+    }
+
+    public void denyWithResponse(HttpResponse resp) {
+        deny();
+        this.getChannelHandlerContext().writeAndFlush(resp);
     }
 
 }
