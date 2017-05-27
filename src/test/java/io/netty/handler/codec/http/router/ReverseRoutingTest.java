@@ -23,35 +23,43 @@ import static io.netty.handler.codec.http.HttpMethod.POST;
 import static io.netty.handler.codec.http.HttpMethod.PUT;
 import static org.junit.Assert.assertEquals;
 
+import org.junit.Before;
 import org.junit.Test;
 
 public class ReverseRoutingTest {
+    private Router<String> router;
+
+    @Before
+    public void setUp() {
+        router = StringRouter.create();
+    }
+
     @Test
     public void testHandleMethod() {
-        assertEquals("/articles", StringRouter.router.uri(GET, "index"));
+        assertEquals("/articles", router.uri(GET, "index"));
 
-        assertEquals("/articles/123", StringRouter.router.uri(GET, "show", "id", "123"));
+        assertEquals("/articles/123", router.uri(GET, "show", "id", "123"));
 
-        assertEquals("/anyMethod", StringRouter.router.uri(GET, "anyMethod"));
-        assertEquals("/anyMethod", StringRouter.router.uri(POST, "anyMethod"));
-        assertEquals("/anyMethod", StringRouter.router.uri(PUT, "anyMethod"));
+        assertEquals("/anyMethod", router.uri(GET, "anyMethod"));
+        assertEquals("/anyMethod", router.uri(POST, "anyMethod"));
+        assertEquals("/anyMethod", router.uri(PUT, "anyMethod"));
     }
 
     @Test
     public void testHandleEmptyParams() {
-        assertEquals("/articles", StringRouter.router.uri("index"));
+        assertEquals("/articles", router.uri("index"));
     }
 
     @Test
     public void testHandleMapParams() {
         Map<String, Object> map = new HashMap<String, Object>();
         map.put("id", 123);
-        assertEquals("/articles/123", StringRouter.router.uri("show", map));
+        assertEquals("/articles/123", router.uri("show", map));
     }
 
     @Test
     public void testHandleVarargs() {
-        assertEquals("/download/foo/bar.png", StringRouter.router.uri("download", "*", "foo/bar.png"));
+        assertEquals("/download/foo/bar.png", router.uri("download", "*", "foo/bar.png"));
     }
 
     @Test
@@ -59,14 +67,14 @@ public class ReverseRoutingTest {
         Map<String, Object> map1 = new HashMap<String, Object>();
         map1.put("id",     123);
         map1.put("format", "json");
-        assertEquals("/articles/123/json", StringRouter.router.uri("show", map1));
+        assertEquals("/articles/123/json", router.uri("show", map1));
 
         Map<String, Object> map2 = new HashMap<String, Object>();
         map2.put("id",     123);
         map2.put("format", "json");
         map2.put("x",      1);
         map2.put("y",      2);
-        String path = StringRouter.router.uri("show", map2);
+        String path = router.uri("show", map2);
         boolean matched1 = path.equals("/articles/123/json?x=1&y=2");
         boolean matched2 = path.equals("/articles/123/json?y=2&x=1");
         assertEquals(true, matched1 || matched2);

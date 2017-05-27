@@ -27,21 +27,41 @@ import java.util.Map;
  * Result of calling {@link Router#route(HttpMethod, String)}.
  */
 public class RouteResult<T> {
-    private final T target;
+    private final String uri;
+    private final String decodedPath;
+
     private final Map<String, String> pathParams;
     private final Map<String, List<String>> queryParams;
+
+    private final T target;
 
     /**
      * The maps will be wrapped in Collections.unmodifiableMap.
      */
-    public RouteResult(T target, Map<String, String> pathParams, Map<String, List<String>> queryParams) {
-        this.target = ObjectUtil.checkNotNull(target, "target");
+    public RouteResult(
+            String uri, String decodedPath,
+            Map<String, String> pathParams, Map<String, List<String>> queryParams,
+            T target
+    ) {
+        this.uri = ObjectUtil.checkNotNull(uri, "uri");
+        this.decodedPath = ObjectUtil.checkNotNull(decodedPath, "decodedPath");
         this.pathParams = Collections.unmodifiableMap(ObjectUtil.checkNotNull(pathParams, "pathParams"));
         this.queryParams = Collections.unmodifiableMap(ObjectUtil.checkNotNull(queryParams, "queryParams"));
+        this.target = ObjectUtil.checkNotNull(target, "target");
     }
 
-    public T target() {
-        return target;
+    /**
+     * Returns the original request URI.
+     */
+    public String uri() {
+        return uri;
+    }
+
+    /**
+     * Returns the decoded request path.
+     */
+    public String decodedPath() {
+        return decodedPath;
     }
 
     /**
@@ -56,6 +76,10 @@ public class RouteResult<T> {
      */
     public Map<String, List<String>> queryParams() {
         return queryParams;
+    }
+
+    public T target() {
+        return target;
     }
 
     //----------------------------------------------------------------------------

@@ -114,21 +114,14 @@ final class OrderlessRouter<T> {
     /**
      * @return {@code null} if no match
      */
-    public RouteResult<T> route(String requestPath) {
-        return route(PathPattern.removeSlashesAtBothEnds(requestPath).split("/"));
-    }
-
-    /**
-     * @return {@code null} if no match
-     */
-    public RouteResult<T> route(String[] requestPathTokens) {
+    public RouteResult<T> route(String uri, String decodedPath, String[] pathTokens) {
         // Optimize: reuse requestPathTokens and pathParams in the loop
         Map<String, String> pathParams = new HashMap<String, String>();
         for (Map.Entry<PathPattern, T> entry : routes.entrySet()) {
             PathPattern pattern = entry.getKey();
-            if (pattern.match(requestPathTokens, pathParams)) {
+            if (pattern.match(pathTokens, pathParams)) {
                 T target = entry.getValue();
-                return new RouteResult<T>(target, pathParams, Collections.<String, List<String>>emptyMap());
+                return new RouteResult<T>(uri, decodedPath, pathParams, Collections.<String, List<String>>emptyMap(), target);
             }
 
             // Reset for the next try

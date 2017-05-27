@@ -116,33 +116,20 @@ final class MethodlessRouter<T> {
     //--------------------------------------------------------------------------
 
     /**
-     * The request path to route must not contain query.
-     *
-     * @return {@code null} if no match; note: {@code queryParams} is not set in {@link RouteResult}
-     */
-    public RouteResult<T> route(String requestPath) {
-        if (requestPath.contains("?")) {
-            throw new IllegalArgumentException("The request path to route must not contain query");
-        }
-
-        return route(PathPattern.removeSlashesAtBothEnds(requestPath).split("/"));
-    }
-
-    /**
      * @return {@code null} if no match
      */
-    public RouteResult<T> route(String[] requestPathTokens) {
-        RouteResult<T> ret = first.route(requestPathTokens);
+    public RouteResult<T> route(String uri, String decodedPath, String[] pathTokens) {
+        RouteResult<T> ret = first.route(uri, decodedPath, pathTokens);
         if (ret != null) {
             return ret;
         }
 
-        ret = other.route(requestPathTokens);
+        ret = other.route(uri, decodedPath, pathTokens);
         if (ret != null) {
             return ret;
         }
 
-        ret = last.route(requestPathTokens);
+        ret = last.route(uri, decodedPath, pathTokens);
         if (ret != null) {
             return ret;
         }

@@ -22,47 +22,65 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import io.netty.handler.codec.http.HttpMethod;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Set;
 
 public class RoutingTest {
+    private Router<String> router;
+
+    @Before
+    public void setUp() {
+        router = StringRouter.create();
+    }
+
     @Test
     public void testIgnoreSlashesAtBothEnds() {
-        assertEquals("index", StringRouter.router.route(GET, "articles").target());
-        assertEquals("index", StringRouter.router.route(GET, "/articles").target());
-        assertEquals("index", StringRouter.router.route(GET, "//articles").target());
-        assertEquals("index", StringRouter.router.route(GET, "articles/").target());
-        assertEquals("index", StringRouter.router.route(GET, "articles//").target());
-        assertEquals("index", StringRouter.router.route(GET, "/articles/").target());
-        assertEquals("index", StringRouter.router.route(GET, "//articles//").target());
+        assertEquals("index", router.route(GET, "articles").target());
+        assertEquals("index", router.route(GET, "/articles").target());
+        assertEquals("index", router.route(GET, "//articles").target());
+        assertEquals("index", router.route(GET, "articles/").target());
+        assertEquals("index", router.route(GET, "articles//").target());
+        assertEquals("index", router.route(GET, "/articles/").target());
+        assertEquals("index", router.route(GET, "//articles//").target());
     }
 
     @Test
     public void testHandleEmptyParams() {
-        RouteResult<String> routed = StringRouter.router.route(GET, "/articles");
+        RouteResult<String> routed = router.route(GET, "/articles");
         assertEquals("index", routed.target());
         assertEquals(0,       routed.pathParams().size());
     }
 
     @Test
     public void testHandleParams() {
-        RouteResult<String> routed = StringRouter.router.route(GET, "/articles/123");
+        RouteResult<String> routed = router.route(GET, "/articles/123");
         assertEquals("show", routed.target());
         assertEquals(1,      routed.pathParams().size());
         assertEquals("123",  routed.pathParams().get("id"));
     }
 
     @Test
+    public void testEncodedSlash() {
+        RouteResult<String> routed = router.route(GET, "/articles/123%2F456");
+        assertEquals("show",    routed.target());
+        assertEquals(1,         routed.pathParams().size());
+        assertEquals("123/456", routed.pathParams().get("id"));
+
+        assertEquals("/articles/123%2F456", routed.uri());
+        assertEquals("/articles/123/456",   routed.decodedPath());
+    }
+
+    @Test
     public void testHandleNone() {
-        MethodlessRouter<String> router = new MethodlessRouter<String>().addRoute("/articles", "index");
-        RouteResult<String> routed = router.route("/noexist");
-        assertEquals(true, routed == null);
+        RouteResult<String> routed = router.route(GET, "/noexist");
+        assertEquals("404", routed.target());
     }
 
     @Test
     public void testHandleSplatWildcard() {
-        RouteResult<String> routed = StringRouter.router.route(GET, "/download/foo/bar.png");
+        RouteResult<String> routed = router.route(GET, "/download/foo/bar.png");
         assertEquals("download",    routed.target());
         assertEquals(1,             routed.pathParams().size());
         assertEquals("foo/bar.png", routed.pathParams().get("*"));
@@ -70,52 +88,50 @@ public class RoutingTest {
 
     @Test
     public void testHandleOrder() {
-        RouteResult<String> routed1 = StringRouter.router.route(GET, "/articles/new");
+        RouteResult<String> routed1 = router.route(GET, "/articles/new");
         assertEquals("new", routed1.target());
         assertEquals(0,     routed1.pathParams().size());
 
-        RouteResult<String> routed2 = StringRouter.router.route(GET, "/articles/123");
+        RouteResult<String> routed2 = router.route(GET, "/articles/123");
         assertEquals("show", routed2.target());
         assertEquals(1,      routed2.pathParams().size());
         assertEquals("123",  routed2.pathParams().get("id"));
 
-        RouteResult<String> routed3 = StringRouter.router.route(GET, "/notfound");
+        RouteResult<String> routed3 = router.route(GET, "/notfound");
         assertEquals("404", routed3.target());
         assertEquals(0,     routed3.pathParams().size());
     }
 
     @Test
     public void testHandleAnyMethod() {
-        RouteResult<String> routed1 = StringRouter.router.route(GET, "/anyMethod");
+        RouteResult<String> routed1 = router.route(GET, "/anyMethod");
         assertEquals("anyMethod", routed1.target());
         assertEquals(0,           routed1.pathParams().size());
 
-        RouteResult<String> routed2 = StringRouter.router.route(POST, "/anyMethod");
+        RouteResult<String> routed2 = router.route(POST, "/anyMethod");
         assertEquals("anyMethod", routed2.target());
         assertEquals(0,           routed2.pathParams().size());
     }
 
     @Test
     public void testHandleRemoveByTarget() {
-        MethodlessRouter<String> router = new MethodlessRouter<String>().addRoute("/articles", "index");
         router.removeTarget("index");
-        RouteResult<String> routed = router.route("/articles");
-        assertEquals(true, routed == null);
+        RouteResult<String> routed = router.route(GET, "/articles");
+        assertEquals("404", routed.target());
     }
 
     @Test
-    public void testHandleRemoveByPath() {
-        MethodlessRouter<String> router = new MethodlessRouter<String>().addRoute("/articles", "index");
+    public void testHandleRemoveByPathPattern() {
         router.removePathPattern("/articles");
-        RouteResult<String> routed = router.route("/articles");
-        assertEquals(true, routed == null);
+        RouteResult<String> routed = router.route(GET, "/articles");
+        assertEquals("404", routed.target());
     }
 
     @Test
     public void testAllowedMethods() {
-        assertEquals(9, StringRouter.router.allAllowedMethods().size());
+        assertEquals(9, router.allAllowedMethods().size());
 
-        Set<HttpMethod> methods = StringRouter.router.allowedMethods("/articles");
+        Set<HttpMethod> methods = router.allowedMethods("/articles");
         assertEquals(2, methods.size());
         assertTrue(methods.contains(GET));
         assertTrue(methods.contains(POST));
@@ -123,12 +139,12 @@ public class RoutingTest {
 
     @Test
     public void testHandleSubclasses() {
-        MethodlessRouter<Class<? extends Action>> router = new MethodlessRouter<Class<? extends Action>>();
-        router.addRoute("/articles",     Index.class);
-        router.addRoute("/articles/:id", Show.class);
+        Router<Class<? extends Action>> router = new Router<Class<? extends Action>>()
+                .addRoute(GET, "/articles",     Index.class)
+                .addRoute(GET, "/articles/:id", Show.class);
 
-        RouteResult<Class<? extends Action>> routed1 = router.route("/articles");
-        RouteResult<Class<? extends Action>> routed2 = router.route("/articles/123");
+        RouteResult<Class<? extends Action>> routed1 = router.route(GET, "/articles");
+        RouteResult<Class<? extends Action>> routed2 = router.route(GET, "/articles/123");
         assertNotNull(routed1);
         assertNotNull(routed2);
         assertEquals(Index.class, routed1.target());

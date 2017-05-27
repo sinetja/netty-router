@@ -20,6 +20,7 @@ import io.netty.handler.codec.http.QueryStringDecoder;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -260,33 +261,49 @@ public class Router<T> {
      * as the target if it is set, otherwise returns {@code null}.
      */
     public RouteResult<T> route(HttpMethod method, String uri) {
-        QueryStringDecoder decoder = new QueryStringDecoder(uri);
-        String[] tokens = PathPattern.removeSlashesAtBothEnds(decoder.path()).split("/");
-
         MethodlessRouter<T> router = routers.get(method);
         if (router == null) {
             router = anyMethodRouter;
         }
 
-        RouteResult<T> ret = router.route(tokens);
+        QueryStringDecoder decoder = new QueryStringDecoder(uri);
+        String[] tokens = decodePathTokens(uri);
+
+        RouteResult<T> ret = router.route(uri, decoder.path(), tokens);
         if (ret != null) {
-            return new RouteResult<T>(ret.target(), ret.pathParams(), decoder.parameters());
+            return new RouteResult<T>(uri, decoder.path(), ret.pathParams(), decoder.parameters(), ret.target());
         }
 
         if (router != anyMethodRouter) {
-            ret = anyMethodRouter.route(tokens);
+            ret = anyMethodRouter.route(uri, decoder.path(), tokens);
             if (ret != null) {
-                return new RouteResult<T>(ret.target(), ret.pathParams(), decoder.parameters());
+                return new RouteResult<T>(uri, decoder.path(), ret.pathParams(), decoder.parameters(), ret.target());
             }
         }
 
         if (notFound != null) {
-            // Return mutable map to be consistent, instead of
-            // Collections.<String, String>emptyMap()
-            return new RouteResult<T>(notFound, new HashMap<String, String>(), decoder.parameters());
+            return new RouteResult<T>(uri, decoder.path(), Collections.<String, String>emptyMap(), decoder.parameters(), notFound);
         }
 
         return null;
+    }
+
+    private String[] decodePathTokens(String uri) {
+        // Need to split the original URI (instead of QueryStringDecoder#path) then decode the tokens (components),
+        // otherwise /test1/123%2F456 will not match /test1/:p1
+
+        int qPos = uri.indexOf("?");
+        String encodedPath = (qPos >= 0) ? uri.substring(0, qPos) : uri;
+
+        String[] encodedTokens = PathPattern.removeSlashesAtBothEnds(encodedPath).split("/");
+
+        String[] decodedTokens = new String[encodedTokens.length];
+        for (int i = 0; i < encodedTokens.length; i++) {
+            String encodedToken = encodedTokens[i];
+            decodedTokens[i] = QueryStringDecoder.decodeComponent(encodedToken);
+        }
+
+        return decodedTokens;
     }
 
     //--------------------------------------------------------------------------
