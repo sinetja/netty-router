@@ -94,11 +94,16 @@ final class Path {
 
     @Override
     public boolean equals(Object o) {
-        if (o == null) {
+        if (this == o) {
+            return true;
+        }
+
+        if (!(o instanceof Path)) {
             return false;
         }
 
-        return ((Path) o).path.equals(path);
+        Path otherPath = (Path) o;
+        return path.equals(otherPath.path);
     }
 
     //--------------------------------------------------------------------------

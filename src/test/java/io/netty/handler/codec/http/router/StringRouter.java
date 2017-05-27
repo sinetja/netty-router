@@ -19,7 +19,7 @@ final class StringRouter {
     // Utility classes should not have a public or default constructor.
     private StringRouter() { }
 
-    public static final Router<String> router = new Router<String>()
+    static final Router<String> router = new Router<String>()
               .GET("/articles",             "index")
               .GET("/articles/:id",         "show")
               .GET("/articles/:id/:format", "show")

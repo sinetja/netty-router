@@ -19,8 +19,6 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.util.internal.ObjectUtil;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -86,13 +84,13 @@ public class RouteResult<T> {
         String       value  = pathParams.get(name);
 
         if (values == null) {
-            return (value == null)? Collections.<String>emptyList() : Arrays.asList(value);
+            return (value == null)? Collections.<String>emptyList() : Collections.singletonList(value);
         }
 
         if (value == null) {
             return Collections.unmodifiableList(values);
         } else {
-            List<String> aggregated = new ArrayList(values.size() + 1);
+            List<String> aggregated = new ArrayList<String>(values.size() + 1);
             aggregated.addAll(values);
             aggregated.add(value);
             return Collections.unmodifiableList(aggregated);

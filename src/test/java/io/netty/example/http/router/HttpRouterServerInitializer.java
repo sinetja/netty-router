@@ -25,7 +25,7 @@ public class HttpRouterServerInitializer extends ChannelInitializer<SocketChanne
     private final HttpRouterServerHandler handler;
     private final BadClientSilencer       badClientSilencer = new BadClientSilencer();
 
-    public HttpRouterServerInitializer(Router router) {
+    HttpRouterServerInitializer(Router<String> router) {
         handler = new HttpRouterServerHandler(router);
     }
 

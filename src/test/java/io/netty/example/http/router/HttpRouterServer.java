@@ -23,7 +23,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.router.Router;
 
 public class HttpRouterServer {
-    public static final int PORT = 8000;
+    private static final int PORT = 8000;
 
     public static void main(String[] args) throws Exception {
         // This is an example router, it will be used at HttpRouterServerHandler.

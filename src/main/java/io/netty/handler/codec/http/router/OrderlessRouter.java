@@ -15,7 +15,6 @@
  */
 package io.netty.handler.codec.http.router;
 
-import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.util.internal.ObjectUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
@@ -55,7 +54,7 @@ final class OrderlessRouter<T> {
      */
     public OrderlessRouter<T> addRoute(String path, T target) {
         Path p = new Path(path);
-        if (routes.containsKey(path)) {
+        if (routes.containsKey(p)) {
             return this;
         }
 
@@ -121,7 +120,7 @@ final class OrderlessRouter<T> {
             Path path = entry.getKey();
             if (path.match(requestPathTokens, pathParams)) {
                 T target = entry.getValue();
-                return new RouteResult(target, pathParams, Collections.emptyMap());
+                return new RouteResult<T>(target, pathParams, Collections.<String, List<String>>emptyMap());
             }
 
             // Reset for the next loop

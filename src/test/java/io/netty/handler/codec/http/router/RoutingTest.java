@@ -15,12 +15,13 @@
  */
 package io.netty.handler.codec.http.router;
 
-import static io.netty.handler.codec.http.HttpMethod.*;
-
-import static org.junit.Assert.*;
+import static io.netty.handler.codec.http.HttpMethod.GET;
+import static io.netty.handler.codec.http.HttpMethod.POST;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import io.netty.handler.codec.http.HttpMethod;
-import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Set;
@@ -28,13 +29,13 @@ import java.util.Set;
 public class RoutingTest {
     @Test
     public void testIgnoreSlashesAtBothEnds() {
-        Assert.assertEquals("index", StringRouter.router.route(GET, "articles").target());
-        Assert.assertEquals("index", StringRouter.router.route(GET, "/articles").target());
-        Assert.assertEquals("index", StringRouter.router.route(GET, "//articles").target());
-        Assert.assertEquals("index", StringRouter.router.route(GET, "articles/").target());
-        Assert.assertEquals("index", StringRouter.router.route(GET, "articles//").target());
-        Assert.assertEquals("index", StringRouter.router.route(GET, "/articles/").target());
-        Assert.assertEquals("index", StringRouter.router.route(GET, "//articles//").target());
+        assertEquals("index", StringRouter.router.route(GET, "articles").target());
+        assertEquals("index", StringRouter.router.route(GET, "/articles").target());
+        assertEquals("index", StringRouter.router.route(GET, "//articles").target());
+        assertEquals("index", StringRouter.router.route(GET, "articles/").target());
+        assertEquals("index", StringRouter.router.route(GET, "articles//").target());
+        assertEquals("index", StringRouter.router.route(GET, "/articles/").target());
+        assertEquals("index", StringRouter.router.route(GET, "//articles//").target());
     }
 
     @Test
@@ -116,8 +117,8 @@ public class RoutingTest {
 
         Set<HttpMethod> methods = StringRouter.router.allowedMethods("/articles");
         assertEquals(2, methods.size());
-        assertTrue(methods.contains(HttpMethod.GET));
-        assertTrue(methods.contains(HttpMethod.POST));
+        assertTrue(methods.contains(GET));
+        assertTrue(methods.contains(POST));
     }
 
     @Test

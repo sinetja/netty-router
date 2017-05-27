@@ -18,40 +18,40 @@ package io.netty.handler.codec.http.router;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.netty.handler.codec.http.HttpMethod.*;
+import static io.netty.handler.codec.http.HttpMethod.GET;
+import static io.netty.handler.codec.http.HttpMethod.POST;
+import static io.netty.handler.codec.http.HttpMethod.PUT;
+import static org.junit.Assert.assertEquals;
 
-import static org.junit.Assert.*;
-
-import org.junit.Assert;
 import org.junit.Test;
 
 public class ReverseRoutingTest {
     @Test
     public void testHandleMethod() {
-        Assert.assertEquals("/articles", StringRouter.router.path(GET, "index"));
+        assertEquals("/articles", StringRouter.router.path(GET, "index"));
 
-        Assert.assertEquals("/articles/123", StringRouter.router.path(GET, "show", "id", "123"));
+        assertEquals("/articles/123", StringRouter.router.path(GET, "show", "id", "123"));
 
-        Assert.assertEquals("/anyMethod", StringRouter.router.path(GET, "anyMethod"));
-        Assert.assertEquals("/anyMethod", StringRouter.router.path(POST, "anyMethod"));
-        Assert.assertEquals("/anyMethod", StringRouter.router.path(PUT, "anyMethod"));
+        assertEquals("/anyMethod", StringRouter.router.path(GET, "anyMethod"));
+        assertEquals("/anyMethod", StringRouter.router.path(POST, "anyMethod"));
+        assertEquals("/anyMethod", StringRouter.router.path(PUT, "anyMethod"));
     }
 
     @Test
     public void testHandleEmptyParams() {
-        Assert.assertEquals("/articles", StringRouter.router.path("index"));
+        assertEquals("/articles", StringRouter.router.path("index"));
     }
 
     @Test
     public void testHandleMapParams() {
         Map<String, Object> map = new HashMap<String, Object>();
         map.put("id", 123);
-        Assert.assertEquals("/articles/123", StringRouter.router.path("show", map));
+        assertEquals("/articles/123", StringRouter.router.path("show", map));
     }
 
     @Test
     public void testHandleVarargs() {
-        Assert.assertEquals("/download/foo/bar.png", StringRouter.router.path("download", "*", "foo/bar.png"));
+        assertEquals("/download/foo/bar.png", StringRouter.router.path("download", "*", "foo/bar.png"));
     }
 
     @Test
@@ -59,7 +59,7 @@ public class ReverseRoutingTest {
         Map<String, Object> map1 = new HashMap<String, Object>();
         map1.put("id",     123);
         map1.put("format", "json");
-        Assert.assertEquals("/articles/123/json", StringRouter.router.path("show", map1));
+        assertEquals("/articles/123/json", StringRouter.router.path("show", map1));
 
         Map<String, Object> map2 = new HashMap<String, Object>();
         map2.put("id",     123);
