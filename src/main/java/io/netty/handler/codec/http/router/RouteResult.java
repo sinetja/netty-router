@@ -23,16 +23,20 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-/** Result of calling {@link Router#route(HttpMethod, String)}. */
+/**
+ * Result of calling {@link Router#route(HttpMethod, String)}.
+ */
 public class RouteResult<T> {
-    private final T                         target;
-    private final Map<String, String>       pathParams;
+    private final T target;
+    private final Map<String, String> pathParams;
     private final Map<String, List<String>> queryParams;
 
-    /** The maps will be wrapped in Collections.unmodifiableMap. */
+    /**
+     * The maps will be wrapped in Collections.unmodifiableMap.
+     */
     public RouteResult(T target, Map<String, String> pathParams, Map<String, List<String>> queryParams) {
-        this.target      = ObjectUtil.checkNotNull(target,      "target");
-        this.pathParams  = Collections.unmodifiableMap(ObjectUtil.checkNotNull(pathParams,  "pathParams"));
+        this.target = ObjectUtil.checkNotNull(target, "target");
+        this.pathParams = Collections.unmodifiableMap(ObjectUtil.checkNotNull(pathParams, "pathParams"));
         this.queryParams = Collections.unmodifiableMap(ObjectUtil.checkNotNull(queryParams, "queryParams"));
     }
 
@@ -40,12 +44,16 @@ public class RouteResult<T> {
         return target;
     }
 
-    /** Returns all params embedded in the request path. */
+    /**
+     * Returns all params embedded in the request path.
+     */
     public Map<String, String> pathParams() {
         return pathParams;
     }
 
-    /** Returns all params in the query part of the request URI. */
+    /**
+     * Returns all params in the query part of the request URI.
+     */
     public Map<String, List<String>> queryParams() {
         return queryParams;
     }
@@ -60,7 +68,7 @@ public class RouteResult<T> {
      */
     public String queryParam(String name) {
         List<String> values = queryParams.get(name);
-        return (values == null)? null : values.get(0);
+        return (values == null) ? null : values.get(0);
     }
 
     /**
@@ -71,7 +79,7 @@ public class RouteResult<T> {
      */
     public String param(String name) {
         String pathValue = pathParams.get(name);
-        return (pathValue == null)? queryParam(name) : pathValue;
+        return (pathValue == null) ? queryParam(name) : pathValue;
     }
 
     /**
@@ -81,10 +89,10 @@ public class RouteResult<T> {
      */
     public List<String> params(String name) {
         List<String> values = queryParams.get(name);
-        String       value  = pathParams.get(name);
+        String value = pathParams.get(name);
 
         if (values == null) {
-            return (value == null)? Collections.<String>emptyList() : Collections.singletonList(value);
+            return (value == null) ? Collections.<String>emptyList() : Collections.singletonList(value);
         }
 
         if (value == null) {

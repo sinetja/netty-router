@@ -106,7 +106,7 @@ public class RoutingTest {
     @Test
     public void testHandleRemoveByPath() {
         MethodlessRouter<String> router = new MethodlessRouter<String>().addRoute("/articles", "index");
-        router.removePath("/articles");
+        router.removePathPattern("/articles");
         RouteResult<String> routed = router.route("/articles");
         assertEquals(true, routed == null);
     }

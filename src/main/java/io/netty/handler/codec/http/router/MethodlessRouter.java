@@ -19,17 +19,19 @@ package io.netty.handler.codec.http.router;
  * Router that contains information about route matching orders, but doesn't
  * contain information about HTTP request methods.
  *
- * Routes are devided into 3 sections: "first", "last", and "other".
+ * <p>Routes are devided into 3 sections: "first", "last", and "other".
  * Routes in "first" are matched first, then in "other", then in "last".
  */
 final class MethodlessRouter<T> {
     private final OrderlessRouter<T> first = new OrderlessRouter<T>();
     private final OrderlessRouter<T> other = new OrderlessRouter<T>();
-    private final OrderlessRouter<T> last  = new OrderlessRouter<T>();
+    private final OrderlessRouter<T> last = new OrderlessRouter<T>();
 
     //--------------------------------------------------------------------------
 
-    /** Returns the "first" router; routes in this router will be matched first. */
+    /**
+     * Returns the "first" router; routes in this router will be matched first.
+     */
     public OrderlessRouter<T> first() {
         return first;
     }
@@ -42,12 +44,16 @@ final class MethodlessRouter<T> {
         return other;
     }
 
-    /** Returns the "last" router; routes in this router will be matched last. */
+    /**
+     * Returns the "last" router; routes in this router will be matched last.
+     */
     public OrderlessRouter<T> last() {
         return last;
     }
 
-    /** Returns the number of routes in this router. */
+    /**
+     * Returns the number of routes in this router.
+     */
     public int size() {
         return first.routes().size() + other.routes().size() + last.routes().size();
     }
@@ -57,60 +63,74 @@ final class MethodlessRouter<T> {
     /**
      * Adds route to the "first" section.
      *
-     * A path can only point to one target. This method does nothing if the path
+     * <p>A path pattern can only point to one target. This method does nothing if the pattern
      * has already been added.
      */
-    public MethodlessRouter<T> addRouteFirst(String path, T target) {
-        first.addRoute(path, target);
+    public MethodlessRouter<T> addRouteFirst(String pathPattern, T target) {
+        first.addRoute(pathPattern, target);
         return this;
     }
 
     /**
      * Adds route to the "other" section.
      *
-     * A path can only point to one target. This method does nothing if the path
+     * <p>A path pattern can only point to one target. This method does nothing if the pattern
      * has already been added.
      */
-    public MethodlessRouter<T> addRoute(String path, T target) {
-        other.addRoute(path, target);
+    public MethodlessRouter<T> addRoute(String pathPattern, T target) {
+        other.addRoute(pathPattern, target);
         return this;
     }
 
     /**
      * Adds route to the "last" section.
      *
-     * A path can only point to one target. This method does nothing if the path
+     * <p>A path pattern can only point to one target. This method does nothing if the pattern
      * has already been added.
      */
-    public MethodlessRouter<T> addRouteLast(String path, T target) {
-        last.addRoute(path, target);
+    public MethodlessRouter<T> addRouteLast(String pathPattern, T target) {
+        last.addRoute(pathPattern, target);
         return this;
     }
 
     //--------------------------------------------------------------------------
 
-    /** Removes the route specified by the path. */
-    public void removePath(String path) {
-        first.removePath(path);
-        other.removePath(path);
-        last .removePath(path);
+    /**
+     * Removes the route specified by the path pattern.
+     */
+    public void removePathPattern(String pathPattern) {
+        first.removePathPattern(pathPattern);
+        other.removePathPattern(pathPattern);
+        last.removePathPattern(pathPattern);
     }
 
-    /** Removes all routes leading to the target. */
+    /**
+     * Removes all routes leading to the target.
+     */
     public void removeTarget(T target) {
         first.removeTarget(target);
         other.removeTarget(target);
-        last .removeTarget(target);
+        last.removeTarget(target);
     }
 
     //--------------------------------------------------------------------------
 
-    /** @return {@code null} if no match; note: {@code queryParams} is not set in {@link RouteResult} */
-    public RouteResult<T> route(String path) {
-        return route(Path.removeSlashesAtBothEnds(path).split("/"));
+    /**
+     * The request path to route must not contain query.
+     *
+     * @return {@code null} if no match; note: {@code queryParams} is not set in {@link RouteResult}
+     */
+    public RouteResult<T> route(String requestPath) {
+        if (requestPath.contains("?")) {
+            throw new IllegalArgumentException("The request path to route must not contain query");
+        }
+
+        return route(PathPattern.removeSlashesAtBothEnds(requestPath).split("/"));
     }
 
-    /** @return {@code null} if no match; note: {@code queryParams} is not set in {@link RouteResult} */
+    /**
+     * @return {@code null} if no match
+     */
     public RouteResult<T> route(String[] requestPathTokens) {
         RouteResult<T> ret = first.route(requestPathTokens);
         if (ret != null) {
@@ -130,35 +150,39 @@ final class MethodlessRouter<T> {
         return null;
     }
 
-    /** Checks if there's any matching route. */
+    /**
+     * Checks if there's any matching route.
+     */
     public boolean anyMatched(String[] requestPathTokens) {
         return first.anyMatched(requestPathTokens) ||
-               other.anyMatched(requestPathTokens) ||
-               last.anyMatched(requestPathTokens);
+                other.anyMatched(requestPathTokens) ||
+                last.anyMatched(requestPathTokens);
     }
 
     /**
      * Given a target and params, this method tries to do the reverse routing
-     * and returns the path.
+     * and returns the URI.
      *
-     * The params are put to placeholders in the path.
+     * <p>Placeholders in the path pattern will be filled with the params.
      * The params can be a map of {@code placeholder name -> value}
-     * or ordered values. If a param doesn't have a placeholder, it will be put
-     * to the query part of the path.
+     * or ordered values.
+     *
+     * <p>If a param doesn't have a corresponding placeholder, it will be put
+     * to the query part of the result URI.
      *
      * @return {@code null} if there's no match
      */
-    public String path(T target, Object... params) {
-        String ret = first.path(target, params);
+    public String uri(T target, Object... params) {
+        String ret = first.uri(target, params);
         if (ret != null) {
             return ret;
         }
 
-        ret = other.path(target, params);
+        ret = other.uri(target, params);
         if (ret != null) {
             return ret;
         }
 
-        return last.path(target, params);
+        return last.uri(target, params);
     }
 }

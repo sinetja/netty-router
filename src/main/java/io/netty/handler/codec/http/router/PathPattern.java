@@ -20,18 +20,19 @@ import io.netty.util.internal.ObjectUtil;
 import java.util.Map;
 
 /**
- * The path can contain constants or placeholders, example:
+ * The pattern can contain constants or placeholders, example:
  * {@code constant1/:placeholder1/constant2/:*}.
- * {@code :*} is a special placeholder to catch the rest of the path
+ *
+ * <p>{@code :*} is a special placeholder to catch the rest of the path
  * (may include slashes). If exists, it must appear at the end of the path.
  *
- * The path must not contain URL query, example:
+ * <p>The pattern must not contain query, example:
  * {@code constant1/constant2?foo=bar}.
  *
- * The path will be broken to tokens, example:
+ * <p>The pattern will be broken to tokens, example:
  * {@code ["constant1", ":variable", "constant2", ":*"]}
  */
-final class Path {
+final class PathPattern {
     public static String removeSlashesAtBothEnds(String path) {
         ObjectUtil.checkNotNull(path, "path");
 
@@ -57,27 +58,33 @@ final class Path {
 
     //--------------------------------------------------------------------------
 
-    private final String   path;
+    private final String pattern;
     private final String[] tokens;
 
     /**
-     * The path must not contain URL query, example:
+     * The pattern must not contain query, example:
      * {@code constant1/constant2?foo=bar}.
      *
-     * The path will be stored without slashes at both ends.
+     * <p>The pattern will be stored without slashes at both ends.
      */
-    public Path(String path) {
-        this.path   = removeSlashesAtBothEnds(ObjectUtil.checkNotNull(path, "path"));
-        this.tokens = this.path.split("/");
-    }
+    public PathPattern(String pattern) {
+        if (pattern.contains("?")) {
+            throw new IllegalArgumentException("Path pattern must not contain query");
+        }
 
-    /** Returns the path given at the constructor, without slashes at both ends. */
-    public String path() {
-        return path;
+        this.pattern = removeSlashesAtBothEnds(ObjectUtil.checkNotNull(pattern, "pattern"));
+        this.tokens = this.pattern.split("/");
     }
 
     /**
-     * Returns the path given at the constructor, without slashes at both ends,
+     * Returns the pattern given at the constructor, without slashes at both ends.
+     */
+    public String pattern() {
+        return pattern;
+    }
+
+    /**
+     * Returns the pattern given at the constructor, without slashes at both ends,
      * and split by {@code '/'}.
      */
     public String[] tokens() {
@@ -85,11 +92,11 @@ final class Path {
     }
 
     //--------------------------------------------------------------------------
-    // Need these so that Paths can be conveniently used as Map keys.
+    // Instances of this class can be conveniently used as Map keys.
 
     @Override
     public int hashCode() {
-        return path.hashCode();
+        return pattern.hashCode();
     }
 
     @Override
@@ -98,29 +105,29 @@ final class Path {
             return true;
         }
 
-        if (!(o instanceof Path)) {
+        if (!(o instanceof PathPattern)) {
             return false;
         }
 
-        Path otherPath = (Path) o;
-        return path.equals(otherPath.path);
+        PathPattern otherPathPattern = (PathPattern) o;
+        return pattern.equals(otherPathPattern.pattern);
     }
 
     //--------------------------------------------------------------------------
 
     /**
-     * {@code params} will be updated with params embedded in the path.
+     * {@code params} will be updated with params embedded in the request path.
      *
-     * This method signature is designed so that {@code pathTokens} and {@code params}
+     * <p>This method signature is designed so that {@code requestPathTokens} and {@code params}
      * can be created only once then reused, to optimize for performance when a
-     * large number of paths need to be matched.
+     * large number of path patterns need to be matched.
      *
      * @return {@code false} if not matched; in this case params should be reset
      */
     public boolean match(String[] requestPathTokens, Map<String, String> params) {
         if (tokens.length == requestPathTokens.length) {
             for (int i = 0; i < tokens.length; i++) {
-                String key   = tokens[i];
+                String key = tokens[i];
                 String value = requestPathTokens[i];
 
                 if (key.length() > 0 && key.charAt(0) == ':') {
@@ -136,11 +143,11 @@ final class Path {
         }
 
         if (tokens.length > 0 &&
-            tokens[tokens.length - 1].equals(":*") &&
-            tokens.length <= requestPathTokens.length) {
+                tokens[tokens.length - 1].equals(":*") &&
+                tokens.length <= requestPathTokens.length) {
             // The first part
             for (int i = 0; i < tokens.length - 2; i++) {
-                String key   = tokens[i];
+                String key = tokens[i];
                 String value = requestPathTokens[i];
 
                 if (key.length() > 0 && key.charAt(0) == ':') {

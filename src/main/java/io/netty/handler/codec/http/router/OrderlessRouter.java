@@ -35,25 +35,27 @@ import java.util.Set;
 final class OrderlessRouter<T> {
     private static final InternalLogger log = InternalLoggerFactory.getInstance(OrderlessRouter.class);
 
-    // A path can only point to one target
-    private final Map<Path, T> routes = new HashMap<Path, T>();
+    // A path pattern can only point to one target
+    private final Map<PathPattern, T> routes = new HashMap<PathPattern, T>();
 
-    // Reverse index to create reverse routes fast (a target can have multiple paths)
-    private final Map<T, Set<Path>> reverseRoutes = new HashMap<T, Set<Path>>();
+    // Reverse index to create reverse routes fast (a target can have multiple path patterns)
+    private final Map<T, Set<PathPattern>> reverseRoutes = new HashMap<T, Set<PathPattern>>();
 
     //--------------------------------------------------------------------------
 
-    /** Returns all routes in this router, an unmodifiable map of {@code Path -> Target}. */
-    public Map<Path, T> routes() {
+    /**
+     * Returns all routes in this router, an unmodifiable map of {@code PathPattern -> Target}.
+     */
+    public Map<PathPattern, T> routes() {
         return Collections.unmodifiableMap(routes);
     }
 
     /**
-     * This method does nothing if the path has already been added.
-     * A path can only point to one target.
+     * This method does nothing if the path pattern has already been added.
+     * A path pattern can only point to one target.
      */
-    public OrderlessRouter<T> addRoute(String path, T target) {
-        Path p = new Path(path);
+    public OrderlessRouter<T> addRoute(String pathPattern, T target) {
+        PathPattern p = new PathPattern(pathPattern);
         if (routes.containsKey(p)) {
             return this;
         }
@@ -63,78 +65,86 @@ final class OrderlessRouter<T> {
         return this;
     }
 
-    private void addReverseRoute(T target, Path path) {
-        Set<Path> paths = reverseRoutes.get(target);
-        if (paths == null) {
-            paths = new HashSet<Path>();
-            paths.add(path);
-            reverseRoutes.put(target, paths);
+    private void addReverseRoute(T target, PathPattern pathPattern) {
+        Set<PathPattern> patterns = reverseRoutes.get(target);
+        if (patterns == null) {
+            patterns = new HashSet<PathPattern>();
+            patterns.add(pathPattern);
+            reverseRoutes.put(target, patterns);
         } else {
-            paths.add(path);
+            patterns.add(pathPattern);
         }
     }
 
     //--------------------------------------------------------------------------
 
-    /** Removes the route specified by the path. */
-    public void removePath(String path) {
-        Path p      = new Path(path);
-        T    target = routes.remove(p);
+    /**
+     * Removes the route specified by the path pattern.
+     */
+    public void removePathPattern(String pathPattern) {
+        PathPattern p = new PathPattern(pathPattern);
+        T target = routes.remove(p);
         if (target == null) {
             return;
         }
 
-        Set<Path> paths = reverseRoutes.remove(target);
+        Set<PathPattern> paths = reverseRoutes.remove(target);
         paths.remove(p);
     }
 
-    /** Removes all routes leading to the target. */
+    /**
+     * Removes all routes leading to the target.
+     */
     public void removeTarget(T target) {
-        Set<Path> paths = reverseRoutes.remove(ObjectUtil.checkNotNull(target, "target"));
-        if (paths == null) {
+        Set<PathPattern> patterns = reverseRoutes.remove(ObjectUtil.checkNotNull(target, "target"));
+        if (patterns == null) {
             return;
         }
 
-        // A path can only point to one target.
-        // A target can have multiple paths.
-        // Remove all paths leading to this target.
-        for (Path path : paths) {
-            routes.remove(path);
+        // A pattern can only point to one target.
+        // A target can have multiple patterns.
+        // Remove all patterns leading to this target.
+        for (PathPattern pattern : patterns) {
+            routes.remove(pattern);
         }
     }
 
     //--------------------------------------------------------------------------
 
-    /** @return {@code null} if no match; note: {@code queryParams} is not set in {@link RouteResult} */
-    public RouteResult<T> route(String path) {
-        return route(Path.removeSlashesAtBothEnds(path).split("/"));
+    /**
+     * @return {@code null} if no match
+     */
+    public RouteResult<T> route(String requestPath) {
+        return route(PathPattern.removeSlashesAtBothEnds(requestPath).split("/"));
     }
 
-    /** @return {@code null} if no match; note: {@code queryParams} is not set in {@link RouteResult} */
+    /**
+     * @return {@code null} if no match
+     */
     public RouteResult<T> route(String[] requestPathTokens) {
-        // Optimization note:
-        // - Reuse tokens and pathParams in the loop
-        // - decoder doesn't decode anything if decoder.parameters is not called
+        // Optimize: reuse requestPathTokens and pathParams in the loop
         Map<String, String> pathParams = new HashMap<String, String>();
-        for (Map.Entry<Path, T> entry : routes.entrySet()) {
-            Path path = entry.getKey();
-            if (path.match(requestPathTokens, pathParams)) {
+        for (Map.Entry<PathPattern, T> entry : routes.entrySet()) {
+            PathPattern pattern = entry.getKey();
+            if (pattern.match(requestPathTokens, pathParams)) {
                 T target = entry.getValue();
                 return new RouteResult<T>(target, pathParams, Collections.<String, List<String>>emptyMap());
             }
 
-            // Reset for the next loop
+            // Reset for the next try
             pathParams.clear();
         }
 
         return null;
     }
 
-    /** Checks if there's any matching route. */
+    /**
+     * Checks if there's any matching route.
+     */
     public boolean anyMatched(String[] requestPathTokens) {
         Map<String, String> pathParams = new HashMap<String, String>();
-        for (Path path : routes.keySet()) {
-            if (path.match(requestPathTokens, pathParams)) {
+        for (PathPattern pattern : routes.keySet()) {
+            if (pattern.match(requestPathTokens, pathParams)) {
                 return true;
             }
 
@@ -149,19 +159,21 @@ final class OrderlessRouter<T> {
 
     /**
      * Given a target and params, this method tries to do the reverse routing
-     * and returns the path.
+     * and returns the URI.
      *
-     * The params are put to placeholders in the path.
+     * <p>Placeholders in the path pattern will be filled with the params.
      * The params can be a map of {@code placeholder name -> value}
-     * or ordered values. If a param doesn't have a placeholder, it will be put
-     * to the query part of the path.
+     * or ordered values.
      *
-     * @return {@code null} if there's no match, or the params can't be UTF-8 encoded
+     * <p>If a param doesn't have a corresponding placeholder, it will be put
+     * to the query part of the result URI.
+     *
+     * @return {@code null} if there's no match
      */
     @SuppressWarnings("unchecked")
-    public String path(T target, Object... params) {
+    public String uri(T target, Object... params) {
         if (params.length == 0) {
-            return path(target, Collections.emptyMap());
+            return uri(target, Collections.emptyMap());
         }
 
         if (params.length == 1 && params[0] instanceof Map<?, ?>) {
@@ -174,41 +186,43 @@ final class OrderlessRouter<T> {
 
         Map<Object, Object> map = new HashMap<Object, Object>(params.length / 2);
         for (int i = 0; i < params.length; i += 2) {
-            String key   = params[i].toString();
+            String key = params[i].toString();
             String value = params[i + 1].toString();
             map.put(key, value);
         }
         return pathMap(target, map);
     }
 
-    /** @return {@code null} if there's no match, or the params can't be UTF-8 encoded */
+    /**
+     * @return {@code null} if there's no match, or the params can't be UTF-8 encoded
+     */
     private String pathMap(T target, Map<Object, Object> params) {
-        Set<Path> paths = reverseRoutes.get(target);
-        if (paths == null) {
+        Set<PathPattern> patterns = reverseRoutes.get(target);
+        if (patterns == null) {
             return null;
         }
 
         try {
             // The best one is the one with minimum number of params in the query
-            String bestCandidate  = null;
-            int    minQueryParams = Integer.MAX_VALUE;
+            String bestCandidate = null;
+            int minQueryParams = Integer.MAX_VALUE;
 
-            boolean     matched  = true;
+            boolean matched = true;
             Set<String> usedKeys = new HashSet<String>();
 
-            for (Path path : paths) {
+            for (PathPattern pattern : patterns) {
                 matched = true;
                 usedKeys.clear();
 
                 // "+ 16": Just in case the part befor that is 0
-                int           initialCapacity = path.path().length() + 20 * params.size() + 16;
-                StringBuilder b               = new StringBuilder(initialCapacity);
+                int initialCapacity = pattern.pattern().length() + 20 * params.size() + 16;
+                StringBuilder b = new StringBuilder(initialCapacity);
 
-                for (String token : path.tokens()) {
+                for (String token : pattern.tokens()) {
                     b.append('/');
 
                     if (token.length() > 0 && token.charAt(0) == ':') {
-                        String key   = token.substring(1);
+                        String key = token.substring(1);
                         Object value = params.get(key);
                         if (value == null) {
                             matched = false;
@@ -251,7 +265,7 @@ final class OrderlessRouter<T> {
                             }
                         }
 
-                        bestCandidate  = b.toString();
+                        bestCandidate = b.toString();
                         minQueryParams = numQueryParams;
                     }
                 }
