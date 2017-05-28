@@ -89,11 +89,11 @@ import java.util.Set;
  *
  * <h3>Create reverse route</h3>
  *
- * <p>Use {@link #uri(HttpMethod, Object, Object...)} or {@link #uri(Object, Object...)}:
+ * <p>Use {@code #uri}:
  *
  * <pre>
  * {@code
- * router.path(HttpMethod.GET, IndexHandler.class);
+ * router.uri(HttpMethod.GET, IndexHandler.class);
  * // Returns "/articles"
  * }
  * </pre>
@@ -102,7 +102,7 @@ import java.util.Set;
  *
  * <pre>
  * {@code
- * router.path(CreateHandler.class);
+ * router.uri(CreateHandler.class);
  * // Also returns "/articles"
  * }
  * </pre>
@@ -114,7 +114,7 @@ import java.util.Set;
  * // Things in params will be converted to String
  * Map<Object, Object> params = new HashMap<Object, Object>();
  * params.put("id", 123);
- * router.path(ShowHandler.class, params);
+ * router.uri(ShowHandler.class, params);
  * // Returns "/articles/123"
  * }
  * </pre>
@@ -123,7 +123,7 @@ import java.util.Set;
  *
  * <pre>
  * {@code
- * router.path(ShowHandler.class, "id", 123);
+ * router.uri(ShowHandler.class, "id", 123);
  * // Returns "/articles/123"
  * }
  * </pre>
