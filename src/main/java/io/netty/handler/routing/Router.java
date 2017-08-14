@@ -19,6 +19,7 @@ import io.netty.util.ReferenceCountUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import java.text.MessageFormat;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -108,12 +109,15 @@ public abstract class Router extends ChannelHandlerAdapter {
     }
 
     private ChannelPipeline newRouting(ChannelHandlerContext ctx, String name, boolean isException) {
+        final String routing_name;
         if (name == null) {
-            name = "Routing-" + this.nullNameRoutingCount.incrementAndGet();
+            routing_name = "Routing-" + this.nullNameRoutingCount.incrementAndGet();
+        } else {
+            routing_name = name;
         }
         final RoutingPipeline pipeline;
         if (isException) {
-            pipeline = new RoutingPipeline(ctx, name, this) {
+            pipeline = new RoutingPipeline(ctx, routing_name, this) {
                 @Override
                 protected void messageReadAtEnd(ChannelHandlerContext ctx, Object msg) {
                     LOG.warn("An unprocessed message [{}:{}] appeared in exception pipeline. Fire this exception to parent router. Current Router: [{}]", msg.getClass(), msg.getClass().getSuperclass(), getRouterTypeName());
@@ -137,7 +141,17 @@ public abstract class Router extends ChannelHandlerAdapter {
                 });
             }
         } else {
-            pipeline = new RoutingPipeline(ctx, name, this);
+            pipeline = new RoutingPipeline(ctx, routing_name, this) {
+                @Override
+                protected void messageReadAtEnd(ChannelHandlerContext ctx, Object msg) {
+                    LOG.warn("Unhandled message [{}{}] happened. Current Routing: [{}:{}]",
+                            msg.getClass(),
+                            Arrays.asList(new Class[]{Object.class}).contains(msg.getClass().getSuperclass())
+                            ? "" : " : " + msg.getClass().getSuperclass(),
+                            getRouterTypeName(), routing_name);
+                }
+
+            };
             pipeline.addHandlerListener(new RoutingPipeline.HandlerAddedListener() {
                 @Override
                 public void beforeAdded(String name, ChannelHandler handler) {
@@ -149,7 +163,7 @@ public abstract class Router extends ChannelHandlerAdapter {
         }
         ctx.pipeline().addLast(pipeline.getStart().getAnchorName(), pipeline.getStart());
         ctx.pipeline().addAfter(pipeline.getStart().getAnchorName(), pipeline.getEnd().getAnchorName(), pipeline.getEnd());
-        this.routingPipelines.put(name, pipeline);
+        this.routingPipelines.put(routing_name, pipeline);
         return pipeline;
     }
 
