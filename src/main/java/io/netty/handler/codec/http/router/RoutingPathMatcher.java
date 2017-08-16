@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,7 +34,7 @@ class RoutingPathMatcher {
      * The list of all the patterns managed in this router. Mainly used to be
      * scan all the pattern to find a match result with a given generatePath.
      */
-    protected final Map<String, Routing> patterns = new HashMap<String, Routing>();
+    protected final Map<String, Routing> patterns = new LinkedHashMap<String, Routing>();
 
     //----------------------------------------------------
     /**
@@ -51,12 +52,23 @@ class RoutingPathMatcher {
 
     //----------------------------------------------------
     /**
+     * Remove registered patterns configured by the specified routing name.
+     *
+     * @param path
+     * @return
+     */
+    public RoutingPathMatcher remove(String routeName) {
+        this.patterns.remove(routeName);
+        return this;
+    }
+
+    /**
      * Remove all registered patterns with the specified path in param given.
      *
      * @param path
      * @return
      */
-    public RoutingPathMatcher remove(String path) {
+    public RoutingPathMatcher removePathPattern(String path) {
         List<String> tobeRemovedPatterns = new ArrayList<String>();
         for (Map.Entry<String, Routing> entrySet : this.patterns.entrySet()) {
             if (entrySet.getValue().getPath().equals(RouterUtil.normalizePath(path))) {

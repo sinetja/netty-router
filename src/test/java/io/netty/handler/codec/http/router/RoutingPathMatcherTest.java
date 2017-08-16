@@ -63,7 +63,7 @@ public class RoutingPathMatcherTest {
     }
 
     /**
-     * Test of remove method, of class RoutingPathMatcher.
+     * Test of removePathPattern method, of class RoutingPathMatcher.
      */
     @Test
     public void testRemove() {
@@ -74,7 +74,7 @@ public class RoutingPathMatcherTest {
         Routing routing_after_delete = new Routing(new RoutingConfig.SimplePathGet("AFTER_DELETE", "/after/delete"), HttpMethod.GET);
         matcher.add(routing_before_delete).add(routing_tobe_delete).add(routing_after_delete);
         assertSame(routing_tobe_delete, matcher.match("/tobe/delete").getRouting());
-        matcher.remove("/tobe/delete");
+        matcher.removePathPattern("/tobe/delete");
         assertNull(matcher.match("/tobe/delete"));
     }
 
@@ -88,11 +88,17 @@ public class RoutingPathMatcherTest {
         Routing plain_path_routing_1 = new Routing(new RoutingConfig.SimplePathGet("plain_path_routing_1", "/tester/plain/get"), HttpMethod.GET);
         Routing single_var_routing_1 = new Routing(new RoutingConfig.SimplePathGet("single_var_routing_1", "/tester/var/:var1"), HttpMethod.GET);
         Routing dual_var_routing_1 = new Routing(new RoutingConfig.SimplePathGet("dual_var_routing_1", "/tester/var/:var1/var/:var2"), HttpMethod.GET);
-        matcher.add(plain_path_routing_1).add(single_var_routing_1).add(dual_var_routing_1);
+        Routing wildmatch_routing_1 = new Routing(new RoutingConfig.SimplePathGet("wildmatch_routing_1", "/tester/var/:var1/var/:*"), HttpMethod.GET);
+        matcher.add(plain_path_routing_1).add(single_var_routing_1).add(dual_var_routing_1).add(wildmatch_routing_1);
         assertEquals(plain_path_routing_1.getIdentity(), matcher.match("/tester/plain/get").getRouting().getIdentity());
         assertEquals(single_var_routing_1.getIdentity(), matcher.match("/tester/var/bankai").getRouting().getIdentity());
         assertEquals(single_var_routing_1.getIdentity(), matcher.match("/tester/var/var").getRouting().getIdentity());
         assertEquals(dual_var_routing_1.getIdentity(), matcher.match("/tester/var/bankai/var/jikai").getRouting().getIdentity());
+        assertEquals(wildmatch_routing_1.getIdentity(), matcher.match("/tester/var/bankai/var/jikai/wild").getRouting().getIdentity());
+        assertEquals("jikai/wild/perfect", matcher.match("/tester/var/bankai/var/jikai/wild/perfect").decodedParams().get("*"));
+        System.out.println();
+        matcher.remove("dual_var_routing_1");
+        assertEquals("jikai", matcher.match("/tester/var/bankai/var/jikai").decodedParams().get("*"));
     }
 
     /**
