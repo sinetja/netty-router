@@ -85,13 +85,15 @@ public class RoutingPathMatcherTest {
     public void testMatch() {
         System.out.println("match");
         RoutingPathMatcher matcher = new RoutingPathMatcher();
+        Routing rootpoint = new Routing(new RoutingConfig.SimplePathGet("rootpoint_2", "/"), HttpMethod.GET);
         Routing plain_path_routing_1 = new Routing(new RoutingConfig.SimplePathGet("plain_path_routing_1", "/tester/plain/get"), HttpMethod.GET);
         Routing single_var_routing_1 = new Routing(new RoutingConfig.SimplePathGet("single_var_routing_1", "/tester/var/:var1"), HttpMethod.GET);
         Routing dual_var_routing_1 = new Routing(new RoutingConfig.SimplePathGet("dual_var_routing_1", "/tester/var/:var1/var/:var2"), HttpMethod.GET);
         Routing wildmatch_routing_1 = new Routing(new RoutingConfig.SimplePathGet("wildmatch_routing_1", "/tester/var/:var1/var/:*"), HttpMethod.GET);
-        matcher.add(plain_path_routing_1).add(single_var_routing_1).add(dual_var_routing_1).add(wildmatch_routing_1);
+        matcher.add(rootpoint).add(plain_path_routing_1).add(single_var_routing_1).add(dual_var_routing_1).add(wildmatch_routing_1);
+        assertEquals(rootpoint.getIdentity(), matcher.match("/").getRouting().getIdentity());
         assertEquals(plain_path_routing_1.getIdentity(), matcher.match("/tester/plain/get").getRouting().getIdentity());
-        assertEquals(single_var_routing_1.getIdentity(), matcher.match("/tester/var/bankai").getRouting().getIdentity());
+        assertEquals("bankai", matcher.match("/tester/var/bankai/").decodedParams().get("var1"));
         assertEquals(single_var_routing_1.getIdentity(), matcher.match("/tester/var/var").getRouting().getIdentity());
         assertEquals(dual_var_routing_1.getIdentity(), matcher.match("/tester/var/bankai/var/jikai").getRouting().getIdentity());
         assertEquals(wildmatch_routing_1.getIdentity(), matcher.match("/tester/var/bankai/var/jikai/wild").getRouting().getIdentity());

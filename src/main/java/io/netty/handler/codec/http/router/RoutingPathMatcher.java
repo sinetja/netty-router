@@ -92,15 +92,12 @@ class RoutingPathMatcher {
      * discribed as 404 in response.
      * @TODO add path mapping cache acceleration.
      */
-    public RoutingPathMatched match(String path) {
+    public RoutingPathMatched match(final String path) {
         final String[] tokens_from_path;
         try {
             tokens_from_path = RouterUtil.normalizePath(path).split("/");
         } catch (InvalidPathException ex) {
             return null;
-        }
-        if (path.endsWith("/")) {
-            tokens_from_path[tokens_from_path.length - 1] += "/";
         }
         // The map of parameter defined in the pattern with the form of param-name:param-value,
         // which is correspondingly form pattern defined and given generatePath.
@@ -166,6 +163,10 @@ class RoutingPathMatcher {
                 }
             } else {
                 matched = false;
+            }
+            String wildmatched = params.get("*");
+            if (wildmatched != null && path.endsWith("/")) {
+                params.put("*", wildmatched + "/");
             }
             if (matched) {
                 return new RoutingPathMatched(pattern, params);
