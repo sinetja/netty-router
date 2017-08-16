@@ -99,6 +99,9 @@ class RoutingPathMatcher {
         } catch (InvalidPathException ex) {
             return null;
         }
+        if (path.endsWith("/")) {
+            tokens_from_path[tokens_from_path.length - 1] += "/";
+        }
         // The map of parameter defined in the pattern with the form of param-name:param-value,
         // which is correspondingly form pattern defined and given generatePath.
         for (Routing pattern : this.patterns.values()) {

@@ -96,9 +96,9 @@ public class RoutingPathMatcherTest {
         assertEquals(dual_var_routing_1.getIdentity(), matcher.match("/tester/var/bankai/var/jikai").getRouting().getIdentity());
         assertEquals(wildmatch_routing_1.getIdentity(), matcher.match("/tester/var/bankai/var/jikai/wild").getRouting().getIdentity());
         assertEquals("jikai/wild/perfect", matcher.match("/tester/var/bankai/var/jikai/wild/perfect").decodedParams().get("*"));
-        System.out.println();
         matcher.remove("dual_var_routing_1");
         assertEquals("jikai", matcher.match("/tester/var/bankai/var/jikai").decodedParams().get("*"));
+        assertEquals("jikai/", matcher.match("/tester/var/bankai/var/jikai/").decodedParams().get("*"));
     }
 
     /**
