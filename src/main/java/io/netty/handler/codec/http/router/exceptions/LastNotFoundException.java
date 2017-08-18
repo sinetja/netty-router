@@ -10,10 +10,10 @@ package io.netty.handler.codec.http.router.exceptions;
 
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.router.HttpRouted;
-import io.netty.handler.routing.SimpleCycleRouter;
+import io.netty.handler.routing.SimpleIntervalRouter;
 
 /**
- * This class is designed for throwning in {@link SimpleCycleRouter#matcherEnd}.
+ * This class is designed for throwning in {@link SimpleIntervalRouter#matcherEnd}.
  * It should not be used by users.
  *
  * @author Richard Lea <chigix@zoho.com>

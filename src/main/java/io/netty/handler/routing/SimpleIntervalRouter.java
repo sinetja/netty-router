@@ -31,29 +31,29 @@ import java.util.concurrent.atomic.AtomicReference;
  * @param <BEGIN> The type of the message to start one new routing.
  * @param <END> The type of the message to end current routing.
  */
-public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
+public abstract class SimpleIntervalRouter<BEGIN, END> extends Router {
 
-    private static final InternalLogger LOG = InternalLoggerFactory.getInstance(SimpleCycleRouter.class);
+    private static final InternalLogger LOG = InternalLoggerFactory.getInstance(SimpleIntervalRouter.class);
 
-    private final TypeParameterMatcher matcherBegin = TypeParameterMatcher.find(this, SimpleCycleRouter.class, "BEGIN");
-    private final TypeParameterMatcher matcherEnd = TypeParameterMatcher.find(this, SimpleCycleRouter.class, "END");
+    private final TypeParameterMatcher matcherBegin = TypeParameterMatcher.find(this, SimpleIntervalRouter.class, "BEGIN");
+    private final TypeParameterMatcher matcherEnd = TypeParameterMatcher.find(this, SimpleIntervalRouter.class, "END");
 
     private final AtomicReference<RoutingPipeline> activePipeline = new AtomicReference<RoutingPipeline>(null);
 
-    public SimpleCycleRouter() {
+    public SimpleIntervalRouter() {
         super();
     }
 
-    public SimpleCycleRouter(boolean autoRelease, String routerTypeName) {
+    public SimpleIntervalRouter(boolean autoRelease, String routerTypeName) {
         super(autoRelease, routerTypeName);
     }
 
-    public SimpleCycleRouter(boolean autoRelease) {
+    public SimpleIntervalRouter(boolean autoRelease) {
         super(autoRelease);
     }
 
     @Override
-    protected void route(ChannelHandlerContext ctx, Object msg, Map<String, ChannelPipeline> routingPipelines) throws Exception {
+    protected final void route(ChannelHandlerContext ctx, Object msg, Map<String, ChannelPipeline> routings) throws Exception {
         if (!ctx.channel().isOpen()) {
             // Assume this occurance should not exists because closed channel should have also closed socket input.
             // And Unexpectedly closed channel should have related error thrown previously.
@@ -61,7 +61,7 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
         }
         RoutingPipeline pipeline;
         if (this.matcherBegin.match(msg)) {
-            pipeline = (RoutingPipeline) this.routeBegin(ctx, (BEGIN) msg, routingPipelines);
+            pipeline = (RoutingPipeline) this.routeBegin(ctx, (BEGIN) msg, routings);
             if (pipeline == null) {
                 LOG.warn(MessageFormat.format("Null pipeline was returned in channel [{0}], it is suggested to throw exception before set a null as pipeline in channel.", ctx.channel().id()));
                 return;
@@ -101,11 +101,14 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
         }
         if ((pipeline = (RoutingPipeline) this.activePipeline.get()) != null) {
             RecyclableArrayList forward_list = RecyclableArrayList.newInstance();
-            this.decode(ctx, msg, forward_list);
-            for (Object forward_out : forward_list) {
-                this.pipelineForward(pipeline, forward_out);
+            try {
+                this.decode(ctx, msg, forward_list);
+                for (Object forward_out : forward_list) {
+                    this.pipelineForward(pipeline, forward_out);
+                }
+            } finally {
+                forward_list.recycle();
             }
-            forward_list.recycle();
         } else {
             LOG.error(MessageFormat.format("One message occured in an empty routing channel: {0}. "
                     + "Please Check Type Matching required by SimpleCycleRouter in class: {2}",
@@ -126,7 +129,7 @@ public abstract class SimpleCycleRouter<BEGIN, END> extends Router {
         out.add(in);
     }
 
-    protected abstract ChannelPipeline routeBegin(ChannelHandlerContext ctx, BEGIN msg, Map<String, ChannelPipeline> routingPipelines) throws Exception;
+    protected abstract ChannelPipeline routeBegin(ChannelHandlerContext ctx, BEGIN msg, Map<String, ChannelPipeline> routings) throws Exception;
 
     protected abstract boolean routeEnd(ChannelHandlerContext ctx, END msg) throws Exception;
 

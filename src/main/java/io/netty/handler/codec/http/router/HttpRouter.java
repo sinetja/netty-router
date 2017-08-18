@@ -20,7 +20,7 @@ import io.netty.handler.codec.http.router.exceptions.BadRequestException;
 import io.netty.handler.codec.http.router.exceptions.LastNotFoundException;
 import io.netty.handler.codec.http.router.exceptions.NotFoundException;
 import io.netty.handler.codec.http.router.exceptions.UnsupportedMethodException;
-import io.netty.handler.routing.SimpleCycleRouter;
+import io.netty.handler.routing.SimpleIntervalRouter;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import java.text.MessageFormat;
@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentMap;
  *
  * @author Richard Lea <chigix@zoho.com>
  */
-public class HttpRouter extends SimpleCycleRouter<HttpRequest, LastHttpContent> {
+public class HttpRouter extends SimpleIntervalRouter<HttpRequest, LastHttpContent> {
 
     private static final InternalLogger LOG = InternalLoggerFactory.getInstance(HttpRouter.class);
 

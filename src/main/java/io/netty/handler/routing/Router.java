@@ -26,6 +26,9 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
+ * The most and suggested usage is to be used as an annonymous inner class,
+ * which denotes it is unable to use annotation. Hence, all routers class is not
+ * designed as sharable classes.
  *
  * @author Richard Lea <chigix@zoho.com>
  */
