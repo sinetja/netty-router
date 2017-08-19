@@ -12,7 +12,8 @@ package io.netty.handler.routing;
  *
  * @author Richard Lea <chigix@zoho.com>
  */
-public abstract class RoutingException extends Exception implements RoutingTraceable {
+public interface RoutingTraceable {
 
-    public abstract Throwable unwrapException();
+    String getRoutingNameTrace();
+
 }

@@ -86,8 +86,8 @@ public class DefaultExceptionForwarderIT {
         Assert.assertTrue(exceptions.size() > 0);
         Assert.assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR, exceptions.get(0).getSnapshoted().getResponseCode());
         System.out.println(exceptions.get(0).getSnapshoted().getResponseCode());
-        Assert.assertSame(toThrow, ((RoutingException) exceptions.get(0).getCause()).unwrapException());
-        Assert.assertEquals("POST:EXCEPTION THROW TEST", ((RoutingException) exceptions.get(0).getCause()).getRoutingNameTrace());
+        Assert.assertSame(toThrow, exceptions.get(0).getCause());
+        Assert.assertEquals("POST:EXCEPTION THROW TEST", ((RoutingTraceable) exceptions.get(0)).getRoutingNameTrace());
     }
 
     @Test
@@ -196,15 +196,15 @@ public class DefaultExceptionForwarderIT {
         channel.pipeline().addFirst(new HttpRequestDecoder());
         channel.writeInbound(CodecUtil.encodeHttpRequest(builder.getResult(factory)));
         Assert.assertEquals(3, exceptions.size());
-        Assert.assertEquals("POST:OUTER_ROUTING", ((RoutingException) exceptions.get(0).getCause()).getRoutingNameTrace());
+        Assert.assertEquals("POST:OUTER_ROUTING", ((RoutingTraceable) exceptions.get(0)).getRoutingNameTrace());
         Assert.assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR, exceptions.get(0).getSnapshoted().getResponseCode());
-        Assert.assertSame(exceptionInRouter, ((RoutingException) exceptions.get(0).getCause()).unwrapException());
-        Assert.assertEquals("POST:OUTER_ROUTING -> ROUTING_JIKAI", ((RoutingException) exceptions.get(1).getCause()).getRoutingNameTrace());
+        Assert.assertSame(exceptionInRouter, exceptions.get(0).getCause());
+        Assert.assertEquals("POST:OUTER_ROUTING -> ROUTING_JIKAI", ((RoutingTraceable) exceptions.get(1)).getRoutingNameTrace());
         Assert.assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR, exceptions.get(1).getSnapshoted().getResponseCode());
-        Assert.assertSame(exceptionInSubRouting, ((RoutingException) exceptions.get(1).getCause()).unwrapException());
-        Assert.assertEquals("POST:OUTER_ROUTING", ((RoutingException) exceptions.get(2).getCause()).getRoutingNameTrace());
+        Assert.assertSame(exceptionInSubRouting, exceptions.get(1).getCause());
+        Assert.assertEquals("POST:OUTER_ROUTING", ((RoutingTraceable) exceptions.get(2)).getRoutingNameTrace());
         Assert.assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR, exceptions.get(2).getSnapshoted().getResponseCode());
-        Assert.assertSame(exceptionInSubRouter, ((RoutingException) exceptions.get(2).getCause()).unwrapException());
+        Assert.assertSame(exceptionInSubRouter, exceptions.get(2).getCause());
     }
 
 }

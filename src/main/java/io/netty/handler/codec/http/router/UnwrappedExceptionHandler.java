@@ -15,6 +15,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.routing.Forwarder;
 import io.netty.handler.routing.InternalForwardable;
 import io.netty.handler.routing.RoutingException;
+import io.netty.handler.routing.RoutingTraceable;
 import io.netty.handler.routing.UnableRoutingMessageException;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
@@ -36,23 +37,35 @@ public class UnwrappedExceptionHandler extends HttpExceptionInboundHandler<Excep
             forwardToNextHandler.forward(ctx, exc);
             return;
         }
-        if (exc.getCause() instanceof RoutingException) {
-            handleRoutingException(ctx, exc);
-        } else if (exc.getCause() instanceof UnableRoutingMessageException) {
-            handleUnableRouting(ctx, exc);
-        } else if (exc.getCause() instanceof DecoderException) {
-            handleDecoderException(ctx, exc);
-        } else {
-            handleUnwrappedException(ctx, exc);
+        try {
+            if (exc.getCause() instanceof RoutingException) {
+                handleRoutingException(ctx, exc);
+            } else if (exc.getCause() instanceof UnableRoutingMessageException) {
+                handleUnableRouting(ctx, exc);
+            } else if (exc.getCause() instanceof DecoderException) {
+                handleDecoderException(ctx, exc);
+            } else {
+                handleUnwrappedException(ctx, exc);
+            }
+        } catch (Exception ex) {
+            LOG.error("[Exception Occured in handling Exception] " + ex.getMessage(), ex);
         }
     }
 
-    protected void handleRoutingException(ChannelHandlerContext ctx, final HttpException httpexc) {
+    /**
+     * Extract the inner exception and rewrap it as an HttpException, which
+     * could be reaccepted and rechecked by HttpExceptionInBoundHandler Again.
+     *
+     * @param ctx
+     * @param httpexc
+     * @throws Exception
+     */
+    private void handleRoutingException(ChannelHandlerContext ctx, final HttpException httpexc) throws Exception {
         final RoutingException exc = (RoutingException) httpexc.getCause();
         if (exc.unwrapException() instanceof HttpException) {
-            forwardToNextHandler.forward(ctx, exc.unwrapException());
+            super.channelRead(ctx, exc.unwrapException());
         } else {
-            forwardToNextHandler.forward(ctx, new HttpException(exc.unwrapException()) {
+            super.channelRead(ctx, new WrappedHttpException(exc.unwrapException()) {
 
                 @Override
                 public HttpRequest getHttpRequest() {
@@ -63,11 +76,16 @@ public class UnwrappedExceptionHandler extends HttpExceptionInboundHandler<Excep
                 public io.netty.handler.codec.http.router.HttpRouted getHttpRouted() {
                     return httpexc.getHttpRouted();
                 }
+
+                @Override
+                public String getRoutingNameTrace() {
+                    return exc.getRoutingNameTrace();
+                }
             });
         }
     }
 
-    protected void handleUnableRouting(ChannelHandlerContext ctx, HttpException httpexc) {
+    protected void handleUnableRouting(ChannelHandlerContext ctx, HttpException httpexc) throws Exception {
         if (ctx.channel().isOpen()) {
             handleUnwrappedException(ctx, httpexc);
             return;
@@ -80,13 +98,13 @@ public class UnwrappedExceptionHandler extends HttpExceptionInboundHandler<Excep
         LOG.warn(MessageFormat.format("One http message is trying to be put in a closed channel: {0}", ctx.channel().id()));
     }
 
-    protected void handleDecoderException(ChannelHandlerContext ctx, HttpException httpexc) {
+    protected void handleDecoderException(ChannelHandlerContext ctx, HttpException httpexc) throws Exception {
         if (ctx.channel().isOpen()) {
             handleUnwrappedException(ctx, httpexc);
         }
     }
 
-    protected void handleUnwrappedException(ChannelHandlerContext ctx, final HttpException httpexc) {
+    protected void handleUnwrappedException(ChannelHandlerContext ctx, final HttpException httpexc) throws Exception {
         LOG.error("Bomb!!!!--Unwrapped exception was throwed:", httpexc.getCause());
         forwardToNextHandler.forward(ctx, new HttpException(httpexc.getCause()) {
             @Override
@@ -104,6 +122,13 @@ public class UnwrappedExceptionHandler extends HttpExceptionInboundHandler<Excep
     @Override
     public void setForwarder(Forwarder forwarder) {
         forwardToNextHandler = forwarder;
+    }
+
+    private abstract static class WrappedHttpException extends HttpException implements WrappedByRouter, RoutingTraceable {
+
+        public WrappedHttpException(Throwable cause) {
+            super(cause);
+        }
     }
 
 }

@@ -11,12 +11,13 @@ package io.netty.handler.codec.http.router.testutil;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.router.HttpException;
 import io.netty.handler.codec.http.router.HttpRouted;
+import io.netty.handler.routing.RoutingTraceable;
 
 /**
  *
  * @author Richard Lea <chigix@zoho.com>
  */
-public abstract class SnapshotHttpException extends HttpException {
+public abstract class SnapshotHttpException extends HttpException implements RoutingTraceable {
 
     private final HttpException originalException;
 

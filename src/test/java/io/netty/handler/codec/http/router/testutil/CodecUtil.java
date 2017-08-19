@@ -22,6 +22,7 @@ import io.netty.handler.codec.http.router.HttpException;
 import io.netty.handler.codec.http.router.HttpRouted;
 import io.netty.handler.codec.http.router.HttpRouter;
 import io.netty.handler.codec.http.router.RoutingConfig;
+import io.netty.handler.routing.RoutingTraceable;
 import io.netty.util.CharsetUtil;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -112,23 +113,43 @@ public class CodecUtil {
             protected void initExceptionRouting(ChannelPipeline pipeline) {
                 pipeline.addLast(new UnwrappedExceptionHandler() {
                     @Override
-                    protected void reportException(ChannelHandlerContext ctx, HttpException httpexc) {
+                    protected void reportException(ChannelHandlerContext ctx, final HttpException httpexc) {
                         final boolean isPreviouslyClosed = !ctx.channel().isOpen();
                         excepts.add(new SnapshotHttpException(httpexc.getCause(), httpexc) {
                             @Override
                             public boolean isChannelClosed() {
                                 return isPreviouslyClosed;
                             }
+
+                            @Override
+                            public String getRoutingNameTrace() {
+                                if (httpexc.getCause() instanceof RoutingTraceable) {
+                                    return ((RoutingTraceable) httpexc.getCause()).getRoutingNameTrace();
+                                } else if (httpexc instanceof RoutingTraceable) {
+                                    return ((RoutingTraceable) httpexc).getRoutingNameTrace();
+                                }
+                                return null;
+                            }
                         });
                     }
                 }).addLast(new SimpleChannelInboundHandler<HttpException>() {
                     @Override
-                    protected void messageReceived(ChannelHandlerContext ctx, HttpException msg) throws Exception {
+                    protected void messageReceived(ChannelHandlerContext ctx, final HttpException msg) throws Exception {
                         final boolean isPreviouslyClosed = !ctx.channel().isOpen();
                         excepts.add(new SnapshotHttpException(msg, msg) {
                             @Override
                             public boolean isChannelClosed() {
                                 return isPreviouslyClosed;
+                            }
+
+                            @Override
+                            public String getRoutingNameTrace() {
+                                if (msg.getCause() instanceof RoutingTraceable) {
+                                    return ((RoutingTraceable) msg).getRoutingNameTrace();
+                                } else if (msg instanceof RoutingTraceable) {
+                                    return ((RoutingTraceable) msg).getRoutingNameTrace();
+                                }
+                                return null;
                             }
                         });
                     }
@@ -180,11 +201,6 @@ public class CodecUtil {
 
         @Override
         protected void handleDecoderException(ChannelHandlerContext ctx, HttpException httpexc) {
-            reportException(ctx, httpexc);
-        }
-
-        @Override
-        protected void handleRoutingException(ChannelHandlerContext ctx, HttpException httpexc) {
             reportException(ctx, httpexc);
         }
 
